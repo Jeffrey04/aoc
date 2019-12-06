@@ -20,5 +20,4 @@ def compute_puzzle2()
         }
 end
 
-puts("Answer for puzzle 1 is #{compute_puzzle1}")
-puts("Answer for puzzle 2 is #{compute_puzzle2}")
+puts("RUBY:\t#{compute_puzzle1}\t#{compute_puzzle2}")
