@@ -19,7 +19,15 @@ fn compute_puzzle1() -> i32 {
         .sum()
 }
 
+fn compute_puzzle2() -> i32 {
+    lines_from_file(env::var("PUZZLE_INPUT").unwrap())
+        .unwrap()
+        .iter()
+        .map(|x| calculator::fuel_fuel_calculate(x.parse::<i32>().unwrap(), 0))
+        .sum()
+}
+
 
 fn main() {
-    println!("RUST:\t{}", compute_puzzle1());
+    println!("RUST:\t{}\t{}", compute_puzzle1(), compute_puzzle2());
 }
