@@ -5,7 +5,7 @@ end
 def input_parse(input)
     input \
         .split(',')
-        .map{|x| x.to_i}
+        .map{|x| x.strip.to_i}
 end
 
 def input_eval(code, pointer=0)

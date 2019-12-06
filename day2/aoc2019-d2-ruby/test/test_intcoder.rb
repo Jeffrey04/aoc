@@ -1,4 +1,3 @@
-# run this https://www.sitepoint.com/minitest-shoulda/
 require 'minitest/autorun'
 require 'intcoder'
 
