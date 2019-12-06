@@ -1,26 +1,43 @@
-def input_parse(input)
+INSTRUCTION_CODE_HALT = 99
+INSTRUCTION_CODE_ADD = 1
+INSTRUCTION_CODE_MULTIPLY = 2
+
+ADDRESS_OF_NOUN = 1
+ADDRESS_OF_VERB = 2
+
+def input_parse(input, noun, verb)
     input \
         .split(',')
-        .map{|x| x.strip.to_i}
+        .map.with_index{|x, idx|
+            result = x.strip.to_i
+
+            if idx == ADDRESS_OF_NOUN && noun
+                result = noun
+            elsif idx == ADDRESS_OF_VERB && noun
+                result = verb
+            end
+
+            result
+        }
 end
 
 def memory_ref_value(memory, address)
     memory[memory[address]]
 end
 
-def memory_eval(memory, address=0)
+def memory_eval(memory, instruction_pointer=0)
     result = []
 
-    if memory[address] == 99
+    if memory[instruction_pointer] == INSTRUCTION_CODE_HALT
         result = memory
-    elsif memory[address] == 1
+    elsif memory[instruction_pointer] == INSTRUCTION_CODE_ADD
         result = memory_eval(
-            memory_eval_addition(memory, address),
-            address + 4)
-    elsif memory[address] == 2
+            memory_eval_addition(memory, instruction_pointer),
+            instruction_pointer + 4)
+    elsif memory[instruction_pointer] == INSTRUCTION_CODE_MULTIPLY
         result = memory_eval(
-            memory_eval_multiplication(memory, address),
-            address + 4)
+            memory_eval_multiplication(memory, instruction_pointer),
+            instruction_pointer + 4)
     end
 
     result
@@ -42,6 +59,6 @@ def memory_eval_multiplication(memory, address)
     }
 end
 
-def intcode_compute(input)
-    memory_eval(input_parse(input))
+def intcode_compute(input, noun=false, verb=false)
+    memory_eval(input_parse(input, noun, verb))
 end
