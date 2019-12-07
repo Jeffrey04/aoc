@@ -1,14 +1,34 @@
-def distance_measure(alpha, beta)
-    intersection_closest(
+def distance_measure_manhattan(alpha, beta)
+    intersection_closest_manhattan(
         path_trace(path_break(alpha)) & path_trace(path_break(beta))
     )
 end
 
-def intersection_closest(intersection)
+def distance_measure_path(alpha, beta)
+    alpha_points = path_trace(path_break(alpha))
+    beta_points = path_trace(path_break(beta))
+    intersection_closest_path(
+        alpha_points & beta_points,
+        alpha_points,
+        beta_points
+    )
+end
+
+def intersection_closest_manhattan(intersection)
     intersection[1, intersection.size].reduce(Float::INFINITY) {|current, incoming|
-        current < incoming.first + incoming.last \
+        current < incoming.first.abs + incoming.last.abs \
             ? current
-            : incoming.first + incoming.last
+            : incoming.first.abs + incoming.last.abs
+    }
+end
+
+def intersection_closest_path(intersection, alpha_points, beta_points)
+    intersection[1, intersection.size].reduce(Float::INFINITY) {|current, incoming|
+        incoming_distance = alpha_points.index(incoming) + beta_points.index(incoming)
+
+        current < incoming_distance \
+            ? current
+            : incoming_distance
     }
 end
 
