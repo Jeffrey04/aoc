@@ -1,17 +1,7 @@
 def distance_measure(alpha, beta)
-    intersection_closest(intersection_find(
-        path_trace(path_break(alpha)),
-        path_trace(path_break(beta))
-    ))
-end
-
-def intersection_find(alpha, beta)
-    alpha.select{|point_alpha|
-        beta.select{|point_beta|
-            point_alpha.first == point_beta.first \
-                && point_alpha.last == point_beta.last
-        }.empty? == false
-    }
+    intersection_closest(
+        path_trace(path_break(alpha)) & path_trace(path_break(beta))
+    )
 end
 
 def intersection_closest(intersection)
@@ -22,32 +12,28 @@ def intersection_closest(intersection)
     }
 end
 
-def move_one(path)
-    path.map.with_index{|line, idx|
-        result = line
-
-        if idx == 0
-            result = [line.first, line.last - 1]
-        end
-
-        result
-    }
+def move_down(points, steps)
+    steps == 0 \
+        ? points
+        : move_down(points << [points.last.first, points.last.last - 1], steps - 1)
 end
 
-def move_down(points)
-    points << [points.last.first, points.last.last - 1]
+def move_left(points, steps)
+    steps == 0 \
+        ? points
+        : move_left(points << [points.last.first - 1, points.last.last], steps - 1)
 end
 
-def move_left(points)
-    points << [points.last.first - 1, points.last.last]
+def move_right(points, steps)
+    steps == 0 \
+        ? points
+        : move_right(points << [points.last.first + 1, points.last.last], steps - 1)
 end
 
-def move_right(points)
-    points << [points.last.first + 1, points.last.last]
-end
-
-def move_up(points)
-    points << [points.last.first, points.last.last + 1]
+def move_up(points, steps)
+    steps == 0 \
+        ? points
+        : move_up(points << [points.last.first, points.last.last + 1], steps - 1)
 end
 
 def path_break(path)
@@ -62,16 +48,14 @@ def path_trace(path, points=[[0, 0]])
 
     if path.empty?
         result = points
-    elsif path.first.last == 0
-        result = path_trace(path[1, path.size], points)
     elsif path.first.first == 'R'
-        result = path_trace(move_one(path), move_right(points))
+        result = path_trace(path[1, path.size], move_right(points, path.first.last))
     elsif path.first.first == 'L'
-        result = path_trace(move_one(path), move_left(points))
+        result = path_trace(path[1, path.size], move_left(points, path.first.last))
     elsif path.first.first == 'U'
-        result = path_trace(move_one(path), move_up(points))
+        result = path_trace(path[1, path.size], move_up(points, path.first.last))
     elsif path.first.first == 'D'
-        result = path_trace(move_one(path), move_down(points))
+        result = path_trace(path[1, path.size], move_down(points, path.first.last))
     end
 
     result
