@@ -59,12 +59,9 @@ end
 def amplifier_eval_feedback_loop(memory_states, input_states, output_states, pointer_states, n=0, i=0)
     result = false
 
-    p "%s turn BEGIN (#{i})" % [n]
-
     if pointer_states.select {|x| x == false}.size == pointer_states.size
         result = output_states.last
     elsif pointer_states[n] == false
-        p "%s is done" % [n]
         result = amplifier_eval_feedback_loop(
             memory_states,
             input_states,
@@ -78,22 +75,21 @@ def amplifier_eval_feedback_loop(memory_states, input_states, output_states, poi
                 input_states[n],
                 output_states[n],
                 pointer_states[n])
-            p "POINTER_NEXT #{pointer} INPUT_NEXT #{input} OUTPUT_NEXT #{output}"
-            p "%s turn ENDS" % [n]
             result = amplifier_eval_feedback_loop(
                 memory_states.map.with_index {|x, idx| idx == n ? memory : x},
                 input_states.map.with_index {|x, idx|
                     if idx == n 
                         input
-                    elsif idx = (n + 1) % pointer_states.size
+                    elsif idx == (n + 1) % pointer_states.size
                         x + [output]
+                    else
+                        x
                     end
                 },
                 output_states.map.with_index {|x, idx| idx == n ? output : x},
                 pointer_states.map.with_index {|x, idx| idx == n ? pointer : x},
                 n)
         rescue ArgumentError
-            p "%s run out of input, currently has %s as output" % [n, output_states[n]]
             result = amplifier_eval_feedback_loop(
                 memory_states,
                 input_states,
@@ -149,7 +145,6 @@ end
 def memory_eval_looper_stepper(memory, input, output=0, instruction_pointer=0)
     result, input_new, output_new, pointer = [], [], 0, 0
 
-    p "SNAPSHOT BEFORE: OPCODE #{opcode_get(memory[instruction_pointer])} INPUT #{input} OUTPUT #{output}"
     if opcode_get(memory[instruction_pointer]) == INSTRUCTION_CODE_HALT
         result, input_new, output_new, pointer = memory.map {|x| x.to_i}, [], output, false
     elsif opcode_get(memory[instruction_pointer]) == INSTRUCTION_CODE_ADD
@@ -172,22 +167,11 @@ def memory_eval_looper_stepper(memory, input, output=0, instruction_pointer=0)
             input[1, input.size - 1],
             output,
             instruction_pointer + 2)
-
-        #result = memory_eval_input(memory, instruction_pointer, input.first)
-        #input_new = input[1, input.size - 1]
-        #output_new = output
-        #pointer = instruction_pointer + 2
     elsif opcode_get(memory[instruction_pointer]) == INSTRUCTION_CODE_OUTPUT
-        #result, input_new, output_new, pointer = memory_eval_looper_stepper(
-        #    memory,
-        #    input,
-        #    memory_eval_output(memory, instruction_pointer),
-        #    instruction_pointer + 2)
         result = memory
         input_new = input
         output_new = memory_eval_output(memory, instruction_pointer)
         pointer = instruction_pointer + 2
-        p "SNAPSHOT AFTER: OPCODE #{opcode_get(memory[instruction_pointer])} INPUT #{input_new} OUTPUT #{output_new}"
     elsif opcode_get(memory[instruction_pointer]) == INSTRUCTION_CODE_JUMP_IF_TRUE
         result, input_new, output_new, pointer = memory_eval_looper_stepper(
             memory,
