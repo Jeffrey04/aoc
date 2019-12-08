@@ -164,7 +164,7 @@ end
 def memory_eval_input(memory, address, input)
     memory.map.with_index {|frame, idx|
         idx == memory_get_value(memory, address + 1) \
-            ? input
+            ? input.to_s
             : frame
     }
 end
