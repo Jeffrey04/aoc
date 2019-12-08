@@ -16,6 +16,7 @@ EXCEPTION_BAD_OUTPUT = "Error in previous output attempt"
 def input_parse(input)
     input \
         .split(',')
+        .map {|x| x.strip()}
 end
 
 def opcode_get(value)
@@ -153,20 +154,20 @@ end
 def memory_eval_jump_if_false(memory, address)
     return memory_get_value(memory, address + 1, opcode_get_parameter_mode(memory[address], 0)) == 0 \
         ? memory_get_value(memory, address + 2, opcode_get_parameter_mode(memory[address], 1))
-        : address + 2
+        : address + 3
 end
 
 
 def memory_eval_jump_if_true(memory, address)
     return memory_get_value(memory, address + 1, opcode_get_parameter_mode(memory[address], 0)) != 0 \
         ? memory_get_value(memory, address + 2, opcode_get_parameter_mode(memory[address], 1))
-        : address + 2
+        : address + 3
 end
 
 def memory_eval_less_than(memory, address)
     memory.map.with_index{|frame, idx|
         idx == memory_get_value(memory, address + 3)  \
-            ? memory_eval_equals_value(memory, address) 
+            ? memory_eval_less_than_value(memory, address) 
             : frame 
     }
 end
