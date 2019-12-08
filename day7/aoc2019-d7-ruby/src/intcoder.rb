@@ -56,7 +56,7 @@ def amplifier_eval(memory, phase_settings, output_prev=0)
     result
 end
 
-def amplifier_eval_feedback_loop(memory_states, input_states, output_states, pointer_states, n=0, i=0)
+def amplifier_eval_feedback_loop(memory_states, input_states, output_states, pointer_states, n=0)
     result = false
 
     if pointer_states.select {|x| x == false}.size == pointer_states.size
@@ -95,8 +95,7 @@ def amplifier_eval_feedback_loop(memory_states, input_states, output_states, poi
                 input_states,
                 output_states,
                 pointer_states,
-                (n + 1) % pointer_states.size,
-                i + 1)
+                (n + 1) % pointer_states.size)
         end
 
     end
