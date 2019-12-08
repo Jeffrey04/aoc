@@ -13,8 +13,18 @@ MODE_IMMEDIATE = '1'
 
 EXCEPTION_BAD_OUTPUT = "Error in previous output attempt"
 
-def amplifier_compute(amplifier_program, phase_settings)
-    amplifier_eval(input_parse(amplifier_program), phase_settings)
+def amplifier_phase_get_best(amplifier_program)
+    (0..4).to_a.permutation(5).reduce([[], 0]) {|current, incoming|
+        signal = amplifier_compute(input_parse(amplifier_program), incoming)
+
+        signal > current.last \
+            ? [incoming, signal]
+            : current
+    }
+end
+
+def amplifier_compute(memory, phase_settings)
+    amplifier_eval(memory, phase_settings)
 end
 
 def amplifier_eval(memory, phase_settings, output_prev=0)
