@@ -15,7 +15,15 @@ def input_parse(input)
 end
 
 def opcode_get(value)
-    value.to_s[-2,value.size]
+    result = value
+
+    if value.size > 2
+        result = value[-2, value.size]
+    elsif value.size <2
+        result = "%02d" % [value]
+    end
+
+    result
 end
 
 def opcode_get_parameter_mode(opcode, parameter)
