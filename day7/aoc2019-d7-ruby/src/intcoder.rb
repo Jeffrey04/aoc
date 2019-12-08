@@ -13,6 +13,25 @@ MODE_IMMEDIATE = '1'
 
 EXCEPTION_BAD_OUTPUT = "Error in previous output attempt"
 
+def amplifier_compute(amplifier_program, phase_settings)
+    amplifier_eval(input_parse(amplifier_program), phase_settings)
+end
+
+def amplifier_eval(memory, phase_settings, output_prev=0)
+    result = false
+
+    if phase_settings.empty?
+        result = output_prev
+    else
+        result = amplifier_eval(
+            memory,
+            phase_settings[1, phase_settings.size - 1],
+            memory_eval(memory, [phase_settings.first, output_prev]).last)
+    end
+
+    result
+end
+
 def input_parse(input)
     input \
         .split(',')
@@ -193,5 +212,5 @@ end
 
 # returns memory, and diagnostic_code (final output)
 def intcode_compute(diagnostic_program, input)
-    memory_eval(input_parse(diagnostic_program), input)
+    memory_eval(input_parse(diagnostic_program), [input])
 end
