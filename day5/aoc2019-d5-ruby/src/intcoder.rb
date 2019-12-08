@@ -27,7 +27,7 @@ def opcode_get(value)
 end
 
 def opcode_get_parameter_mode(opcode, parameter)
-    opcode[-3 - parameter] || 0
+    opcode[-3 - parameter] || '0'
 end
 
 def output_check(output)
@@ -85,6 +85,8 @@ def memory_eval(memory, input, output=0, instruction_pointer=0)
             input,
             _output,
             instruction_pointer + 2)
+    else
+        raise "Bad OPCODE %s" % [memory[instruction_pointer]]
     end
 
     return result, output
