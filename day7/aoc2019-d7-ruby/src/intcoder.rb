@@ -69,35 +69,25 @@ def amplifier_eval_feedback_loop(memory_states, input_states, output_states, poi
             pointer_states,
             (n + 1) % pointer_states.size)
     else
-        begin
-            memory, input, output, pointer = memory_eval_looper_stepper(
-                memory_states[n],
-                input_states[n],
-                output_states[n],
-                pointer_states[n])
-            result = amplifier_eval_feedback_loop(
-                memory_states.map.with_index {|x, idx| idx == n ? memory : x},
-                input_states.map.with_index {|x, idx|
-                    if idx == n 
-                        input
-                    elsif idx == (n + 1) % pointer_states.size
-                        x + [output]
-                    else
-                        x
-                    end
-                },
-                output_states.map.with_index {|x, idx| idx == n ? output : x},
-                pointer_states.map.with_index {|x, idx| idx == n ? pointer : x},
-                n)
-        rescue ArgumentError
-            result = amplifier_eval_feedback_loop(
-                memory_states,
-                input_states,
-                output_states,
-                pointer_states,
-                (n + 1) % pointer_states.size)
-        end
-
+        memory, input, output, pointer = memory_eval_looper_stepper(
+            memory_states[n],
+            input_states[n],
+            output_states[n],
+            pointer_states[n])
+        result = amplifier_eval_feedback_loop(
+            memory_states.map.with_index {|x, idx| idx == n ? memory : x},
+            input_states.map.with_index {|x, idx|
+                if idx == n 
+                    input
+                elsif idx == (n + 1) % pointer_states.size
+                    x + [output]
+                else
+                    x
+                end
+            },
+            output_states.map.with_index {|x, idx| idx == n ? output : x},
+            pointer_states.map.with_index {|x, idx| idx == n ? pointer : x},
+            (n + 1) % pointer_states.size)
     end
 
     result
