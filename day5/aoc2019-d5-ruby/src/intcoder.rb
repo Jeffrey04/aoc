@@ -3,6 +3,10 @@ INSTRUCTION_CODE_ADD = '01'
 INSTRUCTION_CODE_MULTIPLY = '02'
 INSTRUCTION_CODE_INPUT = '03'
 INSTRUCTION_CODE_OUTPUT = '04'
+INSTRUCTION_CODE_JUMP_IF_TRUE = '05'
+INSTRUCTION_CODE_JUMP_IF_FALSE = '06'
+INSTRUCTION_CODE_LESS_THAN = '07'
+INSTRUCTION_CODE_EQUALS = '08'
 
 MODE_POSITION = '0'
 MODE_IMMEDIATE = '1'
@@ -78,13 +82,35 @@ def memory_eval(memory, input, output=0, instruction_pointer=0)
     elsif opcode_get(memory[instruction_pointer]) == INSTRUCTION_CODE_OUTPUT
         output_check(output)
 
-        _memory, _output = memory_eval_output(memory, instruction_pointer)
-
         result, output = memory_eval(
-            _memory,
+            memory,
             input,
-            _output,
+            memory_eval_output(memory, instruction_pointer),
             instruction_pointer + 2)
+    elsif opcode_get(memory[instruction_pointer]) == INSTRUCTION_CODE_JUMP_IF_TRUE
+        result, output = memory_eval(
+            memory,
+            input,
+            output,
+            memory_eval_jump_if_true(memory, instruction_pointer))
+    elsif opcode_get(memory[instruction_pointer]) == INSTRUCTION_CODE_JUMP_IF_FALSE
+        result, output = memory_eval(
+            memory,
+            input,
+            output,
+            memory_eval_jump_if_false(memory, instruction_pointer))
+    elsif opcode_get(memory[instruction_pointer]) == INSTRUCTION_CODE_LESS_THAN
+        result, output = memory_eval(
+            memory_eval_less_than(memory, instruction_pointer),
+            input,
+            output,
+            instruction_pointer + 4)
+    elsif opcode_get(memory[instruction_pointer]) == INSTRUCTION_CODE_EQUALS
+        result, output = memory_eval(
+            memory_eval_equals(memory, instruction_pointer),
+            input,
+            output,
+            instruction_pointer + 4)
     else
         raise "Bad OPCODE %s" % [memory[instruction_pointer]]
     end
@@ -101,12 +127,54 @@ def memory_eval_addition(memory, address)
     }
 end
 
+def memory_eval_equals(memory, address)
+    memory.map.with_index{|frame, idx|
+        idx == memory_get_value(memory, address + 3)  \
+            ? memory_eval_equals_value(memory, address) 
+            : frame 
+    }
+end
+
+def memory_eval_equals_value(memory, address)
+    memory_get_value(memory, address + 1, opcode_get_parameter_mode(memory[address], 0)) == memory_get_value(memory, address + 2, opcode_get_parameter_mode(memory[address], 1)) \
+        ? '1'
+        : '0'
+end
+
 def memory_eval_input(memory, address, input)
     memory.map.with_index {|frame, idx|
         idx == memory_get_value(memory, address + 1) \
             ? input
             : frame
     }
+end
+
+
+def memory_eval_jump_if_false(memory, address)
+    return memory_get_value(memory, address + 1, opcode_get_parameter_mode(memory[address], 0)) == 0 \
+        ? memory_get_value(memory, address + 2, opcode_get_parameter_mode(memory[address], 1))
+        : address + 2
+end
+
+
+def memory_eval_jump_if_true(memory, address)
+    return memory_get_value(memory, address + 1, opcode_get_parameter_mode(memory[address], 0)) != 0 \
+        ? memory_get_value(memory, address + 2, opcode_get_parameter_mode(memory[address], 1))
+        : address + 2
+end
+
+def memory_eval_less_than(memory, address)
+    memory.map.with_index{|frame, idx|
+        idx == memory_get_value(memory, address + 3)  \
+            ? memory_eval_equals_value(memory, address) 
+            : frame 
+    }
+end
+
+def memory_eval_less_than_value(memory, address)
+    memory_get_value(memory, address + 1, opcode_get_parameter_mode(memory[address], 0)) < memory_get_value(memory, address + 2, opcode_get_parameter_mode(memory[address], 1)) \
+        ? '1'
+        : '0'
 end
 
 def memory_eval_multiplication(memory, address)
@@ -119,7 +187,7 @@ def memory_eval_multiplication(memory, address)
 end
 
 def memory_eval_output(memory, address)
-    return memory, memory_get_value(memory, address + 1, MODE_POSITION)
+    return memory_get_value(memory, address + 1, opcode_get_parameter_mode(memory[address], 0))
 end
 
 # returns memory, and diagnostic_code (final output)
