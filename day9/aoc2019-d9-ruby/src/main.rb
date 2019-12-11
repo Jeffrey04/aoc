@@ -1,11 +1,11 @@
 require 'intcoder'
 
 def compute_puzzle1()
-    amplifier_phase_get_best(File.readlines(ENV['PUZZLE_INPUT']).join('')).last
+    intcode_compute(File.readlines(ENV['PUZZLE_INPUT']).join(''), 1).last.last
 end
 
 def compute_puzzle2()
-    amplifier_feedback_loop_phase_get_best(File.readlines(ENV['PUZZLE_INPUT']).join('')).last
+    intcode_compute(File.readlines(ENV['PUZZLE_INPUT']).join(''), 2).last.last
 end
 
 puts("RUBY:\t#{compute_puzzle1}\t#{compute_puzzle2}")

@@ -135,7 +135,7 @@ def memory_get_address(memory, relative_base, address, parameter_mode)
 
     if parameter_mode == MODE_POSITION
         result = memory.fetch(address, 0).to_i
-    elsif parameter_MODE == MODE_RELATIVE
+    elsif parameter_mode == MODE_RELATIVE
         result = relative_base + memory.fetch(address, 0).to_i
     end
 
@@ -324,6 +324,52 @@ def memory_eval(memory, input, output=[], relative_base=0, instruction_pointer=0
     return result, output_new
 end
 
+def memory_eval_loop(memory, input, output=[], relative_base=0, instruction_pointer=0)
+    loop {
+        # p memory.sort.to_h
+        # p "BASE #{relative_base} POINTER #{instruction_pointer} OPCODE #{opcode_get(memory[instruction_pointer])} INPUT #{input} OUTPUT #{output}"
+        if opcode_get(memory[instruction_pointer]) == INSTRUCTION_CODE_HALT
+            memory = (0..memory.keys.max).map {|idx| memory_get_value(memory, relative_base, idx)}
+            output = output
+            break
+        elsif opcode_get(memory[instruction_pointer]) == INSTRUCTION_CODE_ADD
+            memory = memory_eval_addition(memory, relative_base, instruction_pointer)
+            instruction_pointer += 4
+        elsif opcode_get(memory[instruction_pointer]) == INSTRUCTION_CODE_MULTIPLY
+            memory = memory_eval_multiplication(memory, relative_base, instruction_pointer)
+            instruction_pointer += 4
+        elsif opcode_get(memory[instruction_pointer]) == INSTRUCTION_CODE_INPUT
+            memory = memory_eval_input(memory, relative_base, instruction_pointer, input.first)
+            input = input[1, input.size - 1]
+            instruction_pointer += 2
+        elsif opcode_get(memory[instruction_pointer]) == INSTRUCTION_CODE_OUTPUT
+            output += [memory_eval_output(memory, relative_base, instruction_pointer)]
+            instruction_pointer += 2
+        elsif opcode_get(memory[instruction_pointer]) == INSTRUCTION_CODE_JUMP_IF_TRUE
+            instruction_pointer = memory_eval_jump_if_true(memory, relative_base, instruction_pointer)
+        elsif opcode_get(memory[instruction_pointer]) == INSTRUCTION_CODE_JUMP_IF_FALSE
+            instruction_pointer = memory_eval_jump_if_false(memory, relative_base, instruction_pointer)
+        elsif opcode_get(memory[instruction_pointer]) == INSTRUCTION_CODE_LESS_THAN
+            memory = memory_eval_less_than(memory, relative_base, instruction_pointer)
+            instruction_pointer += 4
+        elsif opcode_get(memory[instruction_pointer]) == INSTRUCTION_CODE_EQUALS
+            memory = memory_eval_equals(memory, relative_base, instruction_pointer)
+            instruction_pointer += 4
+        elsif opcode_get(memory[instruction_pointer]) == INSTRUCTION_CODE_ADJUST_RELATIVE_BASE
+            relative_base += memory_get_value(
+                    memory,
+                    relative_base,
+                    instruction_pointer + 1,
+                    opcode_get_parameter_mode(memory[instruction_pointer], 0))
+            instruction_pointer += 2
+        else
+            raise "Bad OPCODE %s" % [memory[instruction_pointer]]
+        end
+    }
+
+    return memory, output
+end
+
 def memory_eval_addition(memory, relative_base, address)
     memory_check_writable(opcode_get_parameter_mode(memory[address], 2))
 
@@ -410,7 +456,7 @@ end
 
 # returns memory, and diagnostic_code (final output)
 def intcode_compute(diagnostic_program, input=nil)
-    memory_eval(
+    memory_eval_loop(
         input_parse(diagnostic_program),
         input != nil ? [input] : [])
 end
