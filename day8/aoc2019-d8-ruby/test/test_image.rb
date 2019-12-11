@@ -7,6 +7,6 @@ class TestImage < Minitest::Test
     end
 
     def test_part2()
-        assert_equal [[PIXEL_BLACK, PIXEL_WHITE], [PIXEL_WHITE, PIXEL_BLACK]], image_get_output('0222112222120000', 2, 2)
+        assert_equal [[PIXEL_BLACK, PIXEL_WHITE], [PIXEL_WHITE, PIXEL_BLACK]], image_merge_layers('0222112222120000', 2, 2)
     end
 end
