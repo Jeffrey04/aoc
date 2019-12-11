@@ -1,5 +1,9 @@
+PIXEL_WHITE = 1
+PIXEL_BLACK = 0
+PIXEL_TRANSPARENT = 2
+
 def image_parse_data(image_data)
-    image_data.split('').map {|x| x.strip().to_i}
+    image_data.strip().split('').map {|x| x.strip().to_i}
 end
 
 def image_build(image_data, column, row, layers=[])
@@ -25,7 +29,7 @@ def image_check_corruption(image_raw, column, row)
             product = incoming.flatten.select {|x| x == 1}.size \
                 * incoming.flatten.select{|x| x == 2}.size
 
-            zeroes != 0 && 0 < current.first \
+            zeroes != 0 && zeroes < current.first \
                 ? [zeroes, product]
                 : current
         }.last
