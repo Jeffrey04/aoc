@@ -57,3 +57,15 @@ def image_merge_layers(image_raw, column, row)
         image_build(image_parse_data(image_raw), column, row).map {|x| x.flatten},
         column)
 end
+
+def image_visualize(image, newline="\n")
+    "%s%s" % [newline, image.map {|row|
+        row.map {|pixel|
+            pixel == PIXEL_WHITE \
+                ? '██'
+                : '  '
+        }
+        .join('')
+    }
+    .join(newline)]
+end

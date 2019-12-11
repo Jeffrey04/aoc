@@ -5,6 +5,7 @@ def compute_puzzle1()
 end
 
 def compute_puzzle2()
+    image_visualize(image_merge_layers(File.readlines(ENV['PUZZLE_INPUT']).join(), 25, 6), "\n\t")
 end
 
-puts "RUBY:\t#{compute_puzzle1}\t#{compute_puzzle2}"
+puts "RUBY:\t#{compute_puzzle1}#{compute_puzzle2}"
