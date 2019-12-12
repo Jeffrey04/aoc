@@ -12,7 +12,7 @@ def map_parse(map_raw, x=0, y=0, asteroids=[])
             map_raw,
             x + 1,
             y,
-            map_raw[y][x] == '#' \
+            map_raw[y][x] != '.' \
                 ? asteroids + [[x, y]]
                 : asteroids)
     end
@@ -55,9 +55,30 @@ def pair_is_neighbour(alpha, beta)
 end
 
 def asteroid_is_between_pair(asteroid, pair)
-    Math.sqrt((pair.last.first - pair.first.first) ** 2 + (pair.last.last - pair.first.last) ** 2).round(7) \
-    == (Math.sqrt((asteroid.first - pair.first.first) ** 2 + (asteroid.last - pair.first.last) ** 2) \
-        + Math.sqrt((asteroid.first - pair.last.first) ** 2 + (asteroid.last - pair.last.last) ** 2)).round(7)
+    asteroids_pair_find_distance(*pair).round(7) \
+    == (asteroids_pair_find_distance(asteroid, pair.first) \
+        + asteroids_pair_find_distance(asteroid, pair.last)).round(7)
+end
+
+def asteroids_pair_find_distance(alpha, beta)
+    Math.sqrt((alpha.first - beta.first) ** 2 + (alpha.last - beta.last) ** 2)
+end
+
+def asteroids_pair_find_angle(alpha, beta)
+    zero_point = [alpha.first, 0]
+    zero_vector = [zero_point.first - alpha.first, zero_point.last - alpha.last]
+    zero_magnitude = Math.sqrt(zero_vector.first ** 2 + zero_vector.last ** 2)
+
+    vector = [beta.first - alpha.first, beta.last - alpha.last]
+    magnitude = Math.sqrt(vector.first ** 2 + vector.last ** 2)
+
+    dot_product = zero_vector.first * vector.first + zero_vector.last * vector.last
+
+    angle = Math.acos(dot_product / (zero_magnitude * magnitude))
+
+    beta.first < alpha.first \
+        ? 360 - angle
+        : angle
 end
 
 def asteroids_pair_find_middle(asteroids)
@@ -76,10 +97,7 @@ def asteroids_pair_hash(pair_sorted)
     pair_sorted.flatten.join('|')
 end
 
-def station_find_best(map_raw)
-    asteroids = map_parse(map_raw)
-    pairs = asteroids_pair_find_middle(asteroids)
-
+def station_get_best(asteroids, pairs)
     Parallel.map(asteroids) {|asteroid|
             [asteroid,
              asteroids
@@ -93,4 +111,51 @@ def station_find_best(map_raw)
                 ? [incoming.first, incoming.last.size]
                 : current
         }
+end
+
+def station_find_best(map_raw)
+    asteroids = map_parse(map_raw)
+
+    station_get_best(asteroids, asteroids_pair_find_middle(asteroids))
+end
+
+def station_run_vaporizer(asteroids, pointer=0, angle=-1, sequence=[])
+    result = []
+
+    if asteroids.empty?
+        result = sequence
+    elsif asteroids[pointer].first == angle
+        pointer_new = (pointer + 1) % asteroids.size
+        result = station_run_vaporizer(
+            asteroids,
+            pointer_new,
+            pointer_new == 0 ? -1 : angle,
+            sequence)
+    else
+        pointer_new = asteroids.size == 1 \
+            ? 0
+            : (pointer % (asteroids.size - 1))
+
+        result = station_run_vaporizer(
+            asteroids.select.with_index {|_, idx| idx != pointer},
+            pointer_new,
+            asteroids[pointer].first,
+            sequence + [asteroids[pointer].last])
+    end
+
+    result
+end
+
+def station_vaporize_asteroids(map_raw)
+    asteroids = map_parse(map_raw)
+
+    station = station_get_best(asteroids, asteroids_pair_find_middle(asteroids)).first
+
+    station_run_vaporizer(asteroids.select {|x| x != station}
+        .map {|asteroid|
+            [asteroids_pair_find_angle(station, asteroid).round(4),
+             asteroids_pair_find_distance(station, asteroid).round(4)] \
+                + [asteroid]
+        }
+        .sort)
 end
