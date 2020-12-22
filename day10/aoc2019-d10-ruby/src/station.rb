@@ -55,9 +55,9 @@ def pair_is_neighbour(alpha, beta)
 end
 
 def asteroid_is_between_pair(asteroid, pair)
-    asteroids_pair_find_distance(*pair).round(7) \
+    asteroids_pair_find_distance(*pair).round(10) \
     == (asteroids_pair_find_distance(asteroid, pair.first) \
-        + asteroids_pair_find_distance(asteroid, pair.last)).round(7)
+        + asteroids_pair_find_distance(asteroid, pair.last)).round(10)
 end
 
 def asteroids_pair_find_distance(alpha, beta)
@@ -66,19 +66,22 @@ end
 
 def asteroids_pair_find_angle(alpha, beta)
     zero_point = [alpha.first, 0]
-    zero_vector = [zero_point.first - alpha.first, zero_point.last - alpha.last]
-    zero_magnitude = Math.sqrt(zero_vector.first ** 2 + zero_vector.last ** 2)
+    #zero_vector = [zero_point.first - alpha.first, zero_point.last - alpha.last]
+    #zero_magnitude = Math.sqrt(zero_vector.first ** 2 + zero_vector.last ** 2)
 
-    vector = [beta.first - alpha.first, beta.last - alpha.last]
-    magnitude = Math.sqrt(vector.first ** 2 + vector.last ** 2)
+    #vector = [beta.first - alpha.first, beta.last - alpha.last]
+    #magnitude = Math.sqrt(vector.first ** 2 + vector.last ** 2)
 
-    dot_product = zero_vector.first * vector.first + zero_vector.last * vector.last
+    #dot_product = zero_vector.first * vector.first + zero_vector.last * vector.last
 
-    angle = Math.acos(dot_product / (zero_magnitude * magnitude))
+    #angle = Math.acos(dot_product / (zero_magnitude * magnitude))
 
-    beta.first < alpha.first \
-        ? 360 - angle
-        : angle
+    #a = beta.first < alpha.first \
+    #    ? 360 - angle
+    #    : angle
+    (360 + Math.atan2(beta.last - alpha.last, beta.first - alpha.first) \
+        - Math.atan2(zero_point.last - alpha.last, zero_point.first - alpha.first)) \
+        % 360
 end
 
 def asteroids_pair_find_middle(asteroids)
@@ -153,8 +156,8 @@ def station_vaporize_asteroids(map_raw)
 
     station_run_vaporizer(asteroids.select {|x| x != station}
         .map {|asteroid|
-            [asteroids_pair_find_angle(station, asteroid).round(4),
-             asteroids_pair_find_distance(station, asteroid).round(4)] \
+            [asteroids_pair_find_angle(station, asteroid).round(7),
+             asteroids_pair_find_distance(station, asteroid).round(7)] \
                 + [asteroid]
         }
         .sort)
