@@ -38,9 +38,6 @@ RULE_DRAW = {
 
 
 def round_evaluate1(round_record: str) -> tuple[str, int]:
-    """
-    Returns SCORE_*
-    """
     result = SCORE_DRAW
     hand_opponent, hand_self = round_record.strip().split(" ")
 
