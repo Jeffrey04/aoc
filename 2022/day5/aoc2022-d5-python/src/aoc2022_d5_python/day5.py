@@ -48,12 +48,7 @@ def move_stack(
 def move_stack2(
     current: list[list[str]], qty: int, origin: int, dest: int
 ) -> list[list[str]]:
-    popped = []
-
-    for _ in range(qty):
-        popped.append(current[origin].pop())
-
-    current[dest].extend(popped[::-1])
+    current[dest].extend([current[origin].pop() for _ in range(qty)][::-1])
 
     return current
 
