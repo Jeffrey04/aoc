@@ -2,7 +2,7 @@ from collections import defaultdict, namedtuple
 from functools import partial, reduce
 from operator import add
 from sys import stdin
-from typing import Optional
+from typing import Optional, Union
 
 State = namedtuple(
     "State",
@@ -23,47 +23,54 @@ DIRECTIONS = {
 }
 
 
-def rope_init(
-    head: tuple[int, int],
-    tail: Optional[tuple[int, int]] = None,
-    is_start: Optional[bool] = False,
-) -> dict[int, dict[int, State]]:
-    rope: dict[int, dict[int, State]] = defaultdict(partial(defaultdict, State))
+class Rope(defaultdict):
+    def __init__(
+        self,
+        head: tuple[int, int],
+        tail: Optional[tuple[int, int]] = None,
+    ) -> None:
+        super().__init__(lambda: False)
 
-    head_updated = State(
-        is_start=is_start or rope[head[0]][head[1]].is_start,
-        is_head=True,
-        is_tail=rope[head[0]][head[1]].is_tail,
-        tail_visited=rope[head[0]][head[1]].tail_visited,
-    )
+        self.start = head
+        self.head = head
+        self.tail = tail if tail else head
+        self[self._tail] = True
 
-    rope[head[0]][head[1]] = head_updated
+    @property
+    def start(self) -> tuple[tuple[int, int], bool]:
+        return self._start, self[self._start]
 
-    if tail:
-        rope[tail[0]][tail[1]] = State(
-            is_start=rope[tail[0]][tail[1]].is_start,
-            is_head=rope[tail[0]][tail[1]].is_head,
-            is_tail=True,
-            tail_visited=True,
-        )
-    else:
-        rope[head[0]][head[1]] = State(
-            is_start=rope[head[0]][head[1]].is_start,
-            is_head=rope[head[0]][head[1]].is_head,
-            is_tail=True,
-            tail_visited=True,
-        )
+    @start.setter
+    def start(self, start: tuple[int, int]) -> None:
+        self._start = start
 
-    return rope
+    @property
+    def head(self) -> tuple[tuple[int, int], bool]:
+        return self._head, self[self._head]
+
+    @head.setter
+    def head(self, head: tuple[int, int]) -> None:
+        self._head = head
+
+    @property
+    def tail(self) -> tuple[tuple[int, int], bool]:
+        return self._tail, self[self._tail]
+
+    @tail.setter
+    def tail(self, tail: tuple[int, int]) -> None:
+        self._tail = tail
+        self[self._tail] = True
+
+    def __repr__(self) -> str:
+        return repr(dict(self, _HEAD=self.head, _TAIL=self.tail, _START=self.start))
 
 
-def check_rope_is_touching(rope_state: dict[int, dict[int, State]]) -> bool:
-    head, tail = rope_find_ends(rope_flatten(rope_state))
+def check_rope_is_touching(rope_state: Rope) -> bool:
+    head, _ = rope_state.head
+    tail, _ = rope_state.tail
 
     return (
-        head[0] == tail[0]
-        or check_is_adjacent(head[0], tail[0])
-        or check_is_diagonal(head[0], tail[0])
+        head == tail or check_is_adjacent(head, tail) or check_is_diagonal(head, tail)
     )
 
 
@@ -80,49 +87,18 @@ def check_is_diagonal(head: tuple[int, int], tail: tuple[int, int]) -> bool:
     )
 
 
-def rope_find_ends(
-    rope_state_flatten: tuple[tuple[tuple[int, int], State], ...]
-) -> tuple[tuple[tuple[int, int], State], tuple[tuple[int, int], State]]:
-    return (
-        next(filter(lambda item: item[-1].is_head, rope_state_flatten)),
-        next(filter(lambda item: item[-1].is_tail, rope_state_flatten)),
-    )
-
-
-def rope_flatten(
-    rope_state: dict[int, dict[int, State]]
-) -> tuple[tuple[tuple[int, int], State], ...]:
-    return tuple(
-        ((row, col), state)
-        for row, _col in rope_state.items()
-        for col, state in _col.items()
-    )
-
-
-def rope_move_tail(
-    rope_state: dict[int, dict[int, State]], direction_head: str
-) -> dict[int, dict[int, State]]:
+def rope_move_tail(rope_state: Rope, direction_head: str) -> Rope:
     if check_rope_is_touching(rope_state):
         return rope_state
 
-    head, tail_current = rope_find_ends(rope_flatten(rope_state))
-    tail_position_new = tuple(map(add, tail_current[0], DIRECTIONS[direction_head]))
+    head, _ = rope_state.head
+    tail_current, _ = rope_state.tail
+    tail_position_new: tuple[int, int] = tuple(
+        map(add, tail_current, DIRECTIONS[direction_head])
+    )
 
-    if check_is_adjacent(head[0], tail_position_new):
-        rope_state[tail_current[0][0]][tail_current[0][1]] = State(
-            is_start=rope_state[tail_current[0][0]][tail_current[0][1]].is_start,
-            is_head=rope_state[tail_current[0][0]][tail_current[0][1]].is_head,
-            is_tail=False,
-            tail_visited=rope_state[tail_current[0][0]][
-                tail_current[0][1]
-            ].tail_visited,
-        )
-        rope_state[tail_position_new[0]][tail_position_new[1]] = State(
-            is_start=rope_state[tail_position_new[0]][tail_position_new[1]].is_start,
-            is_head=rope_state[tail_position_new[0]][tail_position_new[1]].is_head,
-            is_tail=True,
-            tail_visited=True,
-        )
+    if check_is_adjacent(head, tail_position_new):
+        rope_state.tail = tail_position_new
 
     else:
         second_move = (
@@ -132,59 +108,25 @@ def rope_move_tail(
         )
 
         for move in second_move:
-            tail_position_final = tuple(map(add, tail_position_new, DIRECTIONS[move]))
+            tail_position_final: tuple[int, int] = tuple(
+                map(add, tail_position_new, DIRECTIONS[move])
+            )
 
-            if check_is_adjacent(head[0], tail_position_final):
-                rope_state[tail_current[0][0]][tail_current[0][1]] = State(
-                    is_start=rope_state[tail_current[0][0]][
-                        tail_current[0][1]
-                    ].is_start,
-                    is_head=rope_state[tail_current[0][0]][tail_current[0][1]].is_head,
-                    is_tail=False,
-                    tail_visited=rope_state[tail_current[0][0]][
-                        tail_current[0][1]
-                    ].tail_visited,
-                )
-                rope_state[tail_position_final[0]][tail_position_final[1]] = State(
-                    is_start=rope_state[tail_position_final[0]][
-                        tail_position_final[1]
-                    ].is_start,
-                    is_head=rope_state[tail_position_final[0]][
-                        tail_position_final[1]
-                    ].is_head,
-                    is_tail=True,
-                    tail_visited=True,
-                )
+            if check_is_adjacent(head, tail_position_final):
+                rope_state.tail = tail_position_final
                 break
 
     return rope_state
 
 
-def rope_move_head(
-    rope_state: dict[int, dict[int, State]], direction: str
-) -> dict[int, dict[int, State]]:
-    head, _ = rope_find_ends(rope_flatten(rope_state))
-    head_position = tuple(map(add, head[0], DIRECTIONS[direction]))
-
-    rope_state[head[0][0]][head[0][1]] = State(
-        is_start=rope_state[head[0][0]][head[0][1]].is_start,
-        is_head=False,
-        is_tail=rope_state[head[0][0]][head[0][1]].is_tail,
-        tail_visited=rope_state[head[0][0]][head[0][1]].tail_visited,
-    )
-    rope_state[head_position[0]][head_position[1]] = State(
-        is_start=rope_state[head_position[0]][head_position[1]].is_start,
-        is_head=True,
-        is_tail=rope_state[head_position[0]][head_position[1]].is_tail,
-        tail_visited=rope_state[head_position[0]][head_position[1]].tail_visited,
-    )
+def rope_move_head(rope_state: Rope, direction: str) -> Rope:
+    head, _ = rope_state.head
+    rope_state.head = tuple(map(add, head, DIRECTIONS[direction]))
 
     return rope_state
 
 
-def rope_move_motion(
-    rope_state: dict[int, dict[int, State]], direction: str, repetition: int
-) -> dict[int, dict[int, State]]:
+def rope_move_motion(rope_state: Rope, direction: str, repetition: int) -> Rope:
     return (
         rope_state
         if repetition == 0
@@ -196,25 +138,18 @@ def rope_move_motion(
     )
 
 
-def rope_calculate_visited(
-    rope_state: dict[int, dict[int, State]], motion_list: str
-) -> int:
+def rope_calculate_visited(rope_state: Rope, motion_list: str) -> int:
     return len(
         tuple(
             item
-            for item in rope_flatten(
-                reduce(
-                    lambda current, incoming: rope_move_motion(
-                        current, incoming[0], int(incoming[1])
-                    ),
-                    (
-                        item.strip().split(" ")
-                        for item in motion_list.strip().splitlines()
-                    ),
-                    rope_state,
-                )
-            )
-            if item[-1].tail_visited
+            for item in reduce(
+                lambda current, incoming: rope_move_motion(
+                    current, incoming[0], int(incoming[1])
+                ),
+                (item.strip().split(" ") for item in motion_list.strip().splitlines()),
+                rope_state,
+            ).values()
+            if item
         )
     )
 
@@ -222,9 +157,7 @@ def rope_calculate_visited(
 def main() -> None:
     input_raw = stdin.read()
 
-    print(
-        f"PYTHON:\t{rope_calculate_visited(rope_init((0, 0), is_start=True), input_raw)}"
-    )
+    print(f"PYTHON:\t{rope_calculate_visited(Rope((0, 0)), input_raw)}")
 
 
 if __name__ == "__main__":
