@@ -1,5 +1,5 @@
 from collections import defaultdict, namedtuple
-from functools import partial, reduce
+from functools import reduce
 from operator import add
 from sys import stdin
 from typing import Optional, Union
@@ -27,14 +27,17 @@ class Rope(defaultdict):
     def __init__(
         self,
         head: tuple[int, int],
+        chain: int = 0,
         tail: Optional[tuple[int, int]] = None,
     ) -> None:
         super().__init__(lambda: False)
 
         self.start = head
         self.head = head
-        self.tail = tail if tail else head
-        self[self._tail] = True
+
+        self.chain = chain
+
+        self.tail = (tail,) if tail else ((head,) * chain)
 
     @property
     def start(self) -> tuple[tuple[int, int], bool]:
@@ -54,23 +57,22 @@ class Rope(defaultdict):
 
     @property
     def tail(self) -> tuple[tuple[int, int], bool]:
-        return self._tail, self[self._tail]
+        return self._tail[-1], self[self._tail[-1]]
 
     @tail.setter
-    def tail(self, tail: tuple[int, int]) -> None:
+    def tail(self, tail: tuple[tuple[int, int], ...]) -> None:
         self._tail = tail
-        self[self._tail] = True
+        self[self._tail[-1]] = True
 
     def __repr__(self) -> str:
         return repr(dict(self, _HEAD=self.head, _TAIL=self.tail, _START=self.start))
 
 
-def check_rope_is_touching(rope_state: Rope) -> bool:
-    head, _ = rope_state.head
-    tail, _ = rope_state.tail
-
+def check_rope_is_touching(alpha: tuple[int, int], beta: tuple[int, int]) -> bool:
     return (
-        head == tail or check_is_adjacent(head, tail) or check_is_diagonal(head, tail)
+        alpha == beta
+        or check_is_adjacent(alpha, beta)
+        or check_is_diagonal(alpha, beta)
     )
 
 
@@ -88,17 +90,18 @@ def check_is_diagonal(head: tuple[int, int], tail: tuple[int, int]) -> bool:
 
 
 def rope_move_tail(rope_state: Rope, direction_head: str) -> Rope:
-    if check_rope_is_touching(rope_state):
-        return rope_state
-
     head, _ = rope_state.head
     tail_current, _ = rope_state.tail
+
+    if check_rope_is_touching(head, tail_current):
+        return rope_state
+
     tail_position_new: tuple[int, int] = tuple(
         map(add, tail_current, DIRECTIONS[direction_head])
     )
 
     if check_is_adjacent(head, tail_position_new):
-        rope_state.tail = tail_position_new
+        rope_state.tail = (tail_position_new,)
 
     else:
         second_move = (
@@ -113,7 +116,7 @@ def rope_move_tail(rope_state: Rope, direction_head: str) -> Rope:
             )
 
             if check_is_adjacent(head, tail_position_final):
-                rope_state.tail = tail_position_final
+                rope_state.tail = (tail_position_final,)
                 break
 
     return rope_state
@@ -157,7 +160,7 @@ def rope_calculate_visited(rope_state: Rope, motion_list: str) -> int:
 def main() -> None:
     input_raw = stdin.read()
 
-    print(f"PYTHON:\t{rope_calculate_visited(Rope((0, 0)), input_raw)}")
+    print(f"PYTHON:\t{rope_calculate_visited(Rope((0, 0), chain=1), input_raw)}")
 
 
 if __name__ == "__main__":
