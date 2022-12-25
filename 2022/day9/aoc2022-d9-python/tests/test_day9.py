@@ -3,7 +3,6 @@ from aoc2022_d9_python.day9 import (
     DIRECTION_RIGHT,
     DIRECTION_UP,
     Rope,
-    State,
     check_rope_is_touching,
     rope_calculate_visited,
     rope_move_head,
@@ -79,3 +78,17 @@ L 5
 R 2""".strip()
 
     assert 13 == rope_calculate_visited(Rope((0, 0), chain=1), test_input)
+    assert 1 == rope_calculate_visited(Rope((0, 0), chain=9), test_input)
+
+    test_input = """
+R 5
+U 8
+L 8
+D 3
+R 17
+D 10
+L 25
+U 20
+""".strip()
+
+    assert 36 == rope_calculate_visited(Rope((5, 11), chain=9), test_input)
