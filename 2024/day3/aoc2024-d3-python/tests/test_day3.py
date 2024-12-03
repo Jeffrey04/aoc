@@ -1,5 +1,3 @@
-import operator
-
 from funcparserlib.lexer import Token
 
 from aoc2024_d3_python.day3 import (

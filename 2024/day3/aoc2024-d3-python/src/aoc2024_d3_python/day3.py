@@ -4,10 +4,9 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from functools import reduce
 from sys import stdin
-from typing import Any, Callable
 
 from funcparserlib.lexer import Token, TokenSpec, make_tokenizer
-from funcparserlib.parser import NoParseError, finished, many, tok
+from funcparserlib.parser import finished, many, tok
 
 
 class SpecGen(Enum):
@@ -116,9 +115,7 @@ def evaluate_skip_condition(expressions: tuple[Expr, ...]) -> int:
 
 
 def evaluate_with_condition(expressions: tuple[Expr, ...]) -> int:
-    def reducer(
-        current: tuple[bool, int], incoming: ExprMul | ExprCondition
-    ) -> tuple[bool, int]:
+    def reducer(current: tuple[bool, int], incoming: Expr) -> tuple[bool, int]:
         condition, result = current
 
         match incoming:
@@ -130,6 +127,9 @@ def evaluate_with_condition(expressions: tuple[Expr, ...]) -> int:
 
             case ExprCondition():
                 return (incoming.can_proceed, result)
+
+            case _:
+                raise Exception("Unknown expression")
 
     return reduce(reducer, expressions, (True, 0))[-1]
 
