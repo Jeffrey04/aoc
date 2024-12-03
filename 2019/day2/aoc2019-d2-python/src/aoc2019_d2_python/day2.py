@@ -3,7 +3,6 @@ from abc import ABC
 from dataclasses import dataclass
 from enum import Enum, auto
 from functools import reduce
-from itertools import product
 from operator import itemgetter
 from sys import stdin
 
