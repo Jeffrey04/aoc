@@ -1,137 +1,134 @@
 import operator
+from abc import ABC
 from dataclasses import dataclass
 from enum import Enum, auto
 from functools import reduce
 from sys import stdin
-from typing import Callable
+from typing import Any, Callable
 
 from funcparserlib.lexer import Token, TokenSpec, make_tokenizer
-from funcparserlib.parser import NoParseError, tok
+from funcparserlib.parser import NoParseError, finished, many, tok
 
 
-class SpecName(Enum):
-    INS_DONT = auto()
-    INS_DO = auto()
+class SpecGen(Enum):
     INS_MUL = auto()
-    INT = auto()
-    LPAREN = auto()
-    RPAREN = auto()
-    COMMA = auto()
+    INS_DO = auto()
+    INS_DONT = auto()
     GIBBERISH = auto()
 
 
+class SpecMul(Enum):
+    OP = auto()
+    LPAREN = auto()
+    RPAREN = auto()
+    NUMBER = auto()
+    COMMA = auto()
+
+
+class Expr(ABC):
+    pass
+
+
 @dataclass
-class BinaryExpression:
-    op: Callable[[int, int], int]
+class ExprMul(Expr):
     alpha: int
     beta: int
 
     def evaluate(self) -> int:
-        return self.op(self.alpha, self.beta)
+        return operator.mul(self.alpha, self.beta)
 
     def __str__(self) -> str:
         return f"mul({self.alpha},{self.beta})"
 
 
 @dataclass
-class Condition:
+class ExprCondition(Expr):
     can_proceed: bool
 
 
 def tokenize(input: str) -> tuple[Token, ...]:
     tokenizer = make_tokenizer(
         [
-            TokenSpec(SpecName.INS_DONT.name, r"don\'t"),
-            TokenSpec(SpecName.INS_DO.name, r"do"),
-            TokenSpec(SpecName.INS_MUL.name, r"mul"),
-            TokenSpec(SpecName.INT.name, r"\d{1,3}"),
-            TokenSpec(SpecName.LPAREN.name, r"\("),
-            TokenSpec(SpecName.RPAREN.name, r"\)"),
-            TokenSpec(SpecName.COMMA.name, r"\,"),
-            TokenSpec(SpecName.GIBBERISH.name, r"."),
+            TokenSpec(SpecGen.INS_DONT.name, r"don\'t\(\)"),
+            TokenSpec(SpecGen.INS_DO.name, r"do\(\)"),
+            TokenSpec(SpecGen.INS_MUL.name, r"mul\(\d{1,3},\d{1,3}\)"),
+            TokenSpec(SpecGen.GIBBERISH.name, r"[\s\S]"),
+        ]
+    )
+
+    return tuple(
+        token for token in tokenizer(input) if token.type != SpecGen.GIBBERISH.name
+    )
+
+
+def tokenize_mul(input: str) -> tuple[Token, ...]:
+    tokenizer = make_tokenizer(
+        [
+            TokenSpec(SpecMul.OP.name, r"mul"),
+            TokenSpec(SpecMul.LPAREN.name, r"\("),
+            TokenSpec(SpecMul.RPAREN.name, r"\)"),
+            TokenSpec(SpecMul.COMMA.name, r","),
+            TokenSpec(SpecMul.NUMBER.name, r"\d{1,3}"),
         ]
     )
 
     return tuple(tokenizer(input))
 
 
-def parse(tokens: tuple[Token, ...]) -> list[BinaryExpression]:
-    result = []
+def parse(
+    tokens: tuple[Token, ...],
+) -> tuple[Expr, ...]:
+    do = tok(SpecGen.INS_DO.name) >> (lambda _: ExprCondition(True))
+    dont = tok(SpecGen.INS_DONT.name) >> (lambda _: ExprCondition(False))
+    condition = do | dont
 
-    number = tok(SpecName.INT.name) >> int
-    mul = tok(SpecName.INS_MUL.name) >> (lambda _: operator.mul)
+    mul = tok(SpecGen.INS_MUL.name) >> (lambda input: parser_mul(tokenize_mul(input)))
 
-    binary_components = [
-        mul,
-        tok(SpecName.LPAREN.name),
-        number,
-        tok(SpecName.COMMA.name),
-        number,
-        tok(SpecName.RPAREN.name),
-    ]
-    binary = reduce(operator.add, binary_components) >> (
-        lambda expr: BinaryExpression(expr[0], expr[2], expr[4])
-    )
+    program = many(mul | condition) + finished >> operator.itemgetter(0)
 
-    condition_component = [
-        (tok(SpecName.INS_DO.name) >> (lambda _: True))
-        | (tok(SpecName.INS_DONT.name) >> (lambda _: False)),
-        tok(SpecName.LPAREN.name),
-        tok(SpecName.RPAREN.name),
-    ]
-    condition = reduce(operator.add, condition_component) >> (
-        lambda expr: Condition(expr[0])
-    )
-
-    grammar = condition | binary
-
-    current = 0
-    while True:
-        try:
-            if current >= len(tokens):
-                break
-
-            instruction = grammar.parse(tokens[current:])
-            result.append(instruction)
-
-            match instruction:
-                case BinaryExpression():
-                    current += len(binary_components)
-
-                case Condition():
-                    current += len(condition_component)
-
-        except NoParseError:
-            current += 1
-
-    return result
+    return tuple(program.parse(tokens))
 
 
-def evaluate_skip_condition(expressions: list[BinaryExpression]) -> int:
+def parser_mul(tokens: tuple[Token, ...]) -> ExprMul:
+    number = tok(SpecMul.NUMBER.name) >> int
+    operation = (
+        tok(SpecMul.OP.name)
+        + tok(SpecMul.LPAREN.name)
+        + number
+        + tok(SpecMul.COMMA.name)
+        + number
+        + tok(SpecMul.RPAREN.name)
+    ) >> (lambda elem: ExprMul(elem[2], elem[4]))
+    expression = operation + finished >> operator.itemgetter(0)
+
+    return expression.parse(tokens)
+
+
+def evaluate_skip_condition(expressions: tuple[Expr, ...]) -> int:
     return reduce(
         operator.add,
         (
             expression.evaluate()
             for expression in expressions
-            if isinstance(expression, BinaryExpression)
+            if isinstance(expression, ExprMul)
         ),
     )
 
 
-def evaluate_with_condition(expressions: list[BinaryExpression]) -> int:
+def evaluate_with_condition(expressions: tuple[Expr, ...]) -> int:
     def reducer(
-        current: tuple[bool, int], incoming: BinaryExpression | Condition
+        current: tuple[bool, int], incoming: ExprMul | ExprCondition
     ) -> tuple[bool, int]:
         condition, result = current
 
         match incoming:
-            case BinaryExpression():
+            case ExprMul():
                 return (
                     condition,
                     (result + incoming.evaluate()) if condition else result,
                 )
 
-            case Condition():
+            case ExprCondition():
                 return (incoming.can_proceed, result)
 
     return reduce(reducer, expressions, (True, 0))[-1]
