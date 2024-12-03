@@ -1,5 +1,6 @@
 import operator
 from abc import ABC
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum, auto
 from functools import reduce
@@ -134,12 +135,16 @@ def evaluate_with_condition(expressions: tuple[Expr, ...]) -> int:
     return reduce(reducer, expressions, (True, 0))[-1]
 
 
+def solution(evaluator: Callable[[tuple[Expr, ...]], int], input: str) -> int:
+    return evaluator(parse(tokenize(input)))
+
+
 def part1(input: str) -> int:
-    return evaluate_skip_condition(parse(tokenize(input)))
+    return solution(evaluate_skip_condition, input)
 
 
 def part2(input: str) -> int:
-    return evaluate_with_condition(parse(tokenize(input)))
+    return solution(evaluate_with_condition, input)
 
 
 def main() -> None:

@@ -30,10 +30,11 @@ def test_tokenizer() -> None:
 
     assert tokenize(input) == expected
 
-    input = "mul ( 2 , 4 )"
+    input = ("mul(4*", "mul(4*", "mul(4*", "mul ( 2 , 4 )")
     expected = ()
 
-    assert tokenize(input) == expected
+    for case in input:
+        assert tokenize(case) == expected
 
 
 def test_tokenizer_binary() -> None:
