@@ -1,7 +1,8 @@
-from ast import Assert
+from operator import itemgetter
 from sys import stdin
 
-goal = "XMAS"
+xmas = "XMAS"
+mas = "MAS"
 
 
 def board_get_offset(board, x, y):
@@ -11,11 +12,29 @@ def board_get_offset(board, x, y):
     return board[y][x]
 
 
+def find_cross(x: int, y: int, board: tuple[str, ...]) -> bool:
+    try:
+        cross = tuple(
+            (
+                board_get_offset(board, x + offset, y + offset),
+                board_get_offset(board, x - offset, y + offset),
+            )
+            for offset in range(-1, 2)
+        )
+    except AssertionError:
+        return False
+
+    return all(
+        word in (mas, mas[::-1])
+        for word in ("".join(map(itemgetter(i), cross)) for i in range(2))
+    )
+
+
 def find_w2e(x: int, y: int, board: tuple[str, ...]) -> bool:
     try:
         return all(
-            goal[offset] == board_get_offset(board, x + offset, y)  # fmt: skip
-            for offset in range(len(goal))
+            xmas[offset] == board_get_offset(board, x + offset, y)  # fmt: skip
+            for offset in range(len(xmas))
         )
     except AssertionError:
         return False
@@ -24,8 +43,8 @@ def find_w2e(x: int, y: int, board: tuple[str, ...]) -> bool:
 def find_e2w(x: int, y: int, board: tuple[str, ...]) -> bool:
     try:
         return all(
-            goal[offset] == board_get_offset(board, x - offset, y)  # fmt: skip
-            for offset in range(len(goal))
+            xmas[offset] == board_get_offset(board, x - offset, y)  # fmt: skip
+            for offset in range(len(xmas))
         )
     except AssertionError:
         return False
@@ -34,8 +53,8 @@ def find_e2w(x: int, y: int, board: tuple[str, ...]) -> bool:
 def find_n2s(x: int, y: int, board: tuple[str, ...]) -> bool:
     try:
         return all(
-            goal[offset] == board_get_offset(board, x, y + offset)  # fmt: skip
-            for offset in range(len(goal))
+            xmas[offset] == board_get_offset(board, x, y + offset)  # fmt: skip
+            for offset in range(len(xmas))
         )
     except AssertionError:
         return False
@@ -44,8 +63,8 @@ def find_n2s(x: int, y: int, board: tuple[str, ...]) -> bool:
 def find_s2n(x: int, y: int, board: tuple[str, ...]) -> bool:
     try:
         return all(
-            goal[offset] == board_get_offset(board, x, y - offset)  # fmt: skip
-            for offset in range(len(goal))
+            xmas[offset] == board_get_offset(board, x, y - offset)  # fmt: skip
+            for offset in range(len(xmas))
         )
     except AssertionError:
         return False
@@ -54,8 +73,8 @@ def find_s2n(x: int, y: int, board: tuple[str, ...]) -> bool:
 def find_nw2se(x: int, y: int, board: tuple[str, ...]) -> bool:
     try:
         return all(
-            goal[offset] == board_get_offset(board, x + offset, y + offset)  # fmt: skip
-            for offset in range(len(goal))
+            xmas[offset] == board_get_offset(board, x + offset, y + offset)  # fmt: skip
+            for offset in range(len(xmas))
         )
     except AssertionError:
         return False
@@ -64,8 +83,8 @@ def find_nw2se(x: int, y: int, board: tuple[str, ...]) -> bool:
 def find_se2nw(x: int, y: int, board: tuple[str, ...]) -> bool:
     try:
         return all(
-            goal[offset] == board_get_offset(board, x - offset, y - offset)  # fmt: skip
-            for offset in range(len(goal))
+            xmas[offset] == board_get_offset(board, x - offset, y - offset)  # fmt: skip
+            for offset in range(len(xmas))
         )
     except AssertionError:
         return False
@@ -74,8 +93,8 @@ def find_se2nw(x: int, y: int, board: tuple[str, ...]) -> bool:
 def find_ne2sw(x: int, y: int, board: tuple[str, ...]) -> bool:
     try:
         return all(
-            goal[offset] == board_get_offset(board, x - offset, y + offset)  # fmt: skip
-            for offset in range(len(goal))
+            xmas[offset] == board_get_offset(board, x - offset, y + offset)  # fmt: skip
+            for offset in range(len(xmas))
         )
     except AssertionError:
         return False
@@ -84,23 +103,23 @@ def find_ne2sw(x: int, y: int, board: tuple[str, ...]) -> bool:
 def find_sw2ne(x: int, y: int, board: tuple[str, ...]) -> bool:
     try:
         return all(
-            goal[offset] == board_get_offset(board, x + offset, y - offset)  # fmt: skip
-            for offset in range(len(goal))
+            xmas[offset] == board_get_offset(board, x + offset, y - offset)  # fmt: skip
+            for offset in range(len(xmas))
         )
     except AssertionError:
         return False
 
 
-def find_start(board: tuple[str, ...]) -> tuple[tuple[int, int], ...]:
+def find_anchor(board: tuple[str, ...], anchor: str) -> tuple[tuple[int, int], ...]:
     return tuple(
         (x, y)
         for y in range(len(board))
         for x in range(len(board[y]))
-        if board[y][x] == goal[0]
+        if board[y][x] == anchor
     )
 
 
-def count_goal(board: tuple[str, ...]) -> int:
+def count_xmas(board: tuple[str, ...]) -> int:
     def finder(x, y, board) -> int:
         result = (
             find_w2e(x, y, board),
@@ -115,13 +134,22 @@ def count_goal(board: tuple[str, ...]) -> int:
 
         return len([x for x in result if x])
 
-    return sum(finder(*(*point, board)) for point in find_start(board))
+    return sum(finder(*(*point, board)) for point in find_anchor(board, xmas[0]))
+
+
+def count_cross(board: tuple[str, ...]) -> int:
+    def finder(x: int, y: int, board: tuple[str, ...]):
+        pass
+
+    return len(
+        [True for point in find_anchor(board, mas[1]) if find_cross(*(*point, board))]
+    )
 
 
 def main() -> None:
-    input = stdin.read()
+    input = tuple(stdin.read().strip().splitlines())
 
-    print("PYTHON:", count_goal(tuple(input.strip().splitlines())))
+    print("PYTHON:", count_xmas(input), count_cross(input))
 
 
 if __name__ == "__main__":

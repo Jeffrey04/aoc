@@ -1,12 +1,14 @@
 from aoc2024_d4_python.day4 import (
-    count_goal,
+    count_cross,
+    count_xmas,
+    find_anchor,
+    find_cross,
     find_e2w,
     find_n2s,
     find_ne2sw,
     find_nw2se,
     find_s2n,
     find_se2nw,
-    find_start,
     find_sw2ne,
     find_w2e,
 )
@@ -140,14 +142,19 @@ def test_find_sw2ne() -> None:
     assert find_sw2ne(*input) == expected
 
 
-def test_find_start() -> None:
-    input = """
+def test_find_anchor() -> None:
+    input = (
+        tuple(
+            """
 ..X...
 .SAMX.
 .A..A.
 XMAS.S
 .X....
-"""
+""".strip().splitlines()
+        ),
+        "X",
+    )
     expected = (
         (2, 0),
         (4, 1),
@@ -155,7 +162,7 @@ XMAS.S
         (1, 4),
     )
 
-    assert find_start(tuple(input.strip().splitlines())) == expected
+    assert find_anchor(*input) == expected
 
 
 def test_count():
@@ -173,7 +180,7 @@ S.S.S.S.SS
 """
     expected = 18
 
-    assert count_goal(tuple(input.strip().splitlines())) == expected
+    assert count_xmas(tuple(input.strip().splitlines())) == expected
 
     input = """
 MMMSXXMASM
@@ -189,4 +196,54 @@ MXMXAXMASX
 """
     expected = 18
 
-    assert count_goal(tuple(input.strip().splitlines())) == expected
+    assert count_xmas(tuple(input.strip().splitlines())) == expected
+
+
+def test_find_cross() -> None:
+    input = (
+        1,
+        1,
+        tuple(
+            """
+M.S
+.A.
+M.S""".strip().splitlines()
+        ),
+    )
+    expected = True
+
+    assert find_cross(*input) == expected
+
+
+def test_count_cross() -> None:
+    input = """
+.M.S......
+..A..MSMS.
+.M.S.MAA..
+..A.ASMSM.
+.M.S.M....
+..........
+S.S.S.S.S.
+.A.A.A.A..
+M.M.M.M.M.
+..........
+"""
+    expected = 9
+
+    assert count_cross(tuple(input.strip().splitlines())) == expected
+
+    input = """
+MMMSXXMASM
+MSAMXMSMSA
+AMXSXMAAMM
+MSAMASMSMX
+XMASAMXAMM
+XXAMMXXAMA
+SMSMSASXSS
+SAXAMASAAA
+MAMMMXMMMM
+MXMXAXMASX
+"""
+    expected = 9
+
+    assert count_cross(tuple(input.strip().splitlines())) == expected
