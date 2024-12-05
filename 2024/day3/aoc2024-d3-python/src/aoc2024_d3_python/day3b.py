@@ -3,7 +3,6 @@ from abc import ABC
 from dataclasses import dataclass
 from enum import Enum, auto
 from functools import reduce
-from operator import itemgetter
 from sys import stdin
 from typing import Any
 
@@ -21,14 +20,13 @@ class Spec(Enum):
 
 
 class Expr(ABC):
-    offset: int
+    pass
 
 
 @dataclass
 class Mul(Expr):
     alpha: int
     beta: int
-    offset: int
 
     def evaluate(self) -> int:
         return self.alpha * self.beta
@@ -40,7 +38,6 @@ class Mul(Expr):
 @dataclass
 class Condition(Expr):
     can_proceed: bool
-    offset: int
 
 
 #
@@ -88,50 +85,43 @@ def tokenize(input: str) -> tuple[Token, ...]:
     return tuple(reduce(inner, tokenizer(input), []))
 
 
+def parser_reflective(name: Spec) -> Parser:
+    return tok_(name) >> (lambda value: Token_(name, value))
+
+
 def parser_generate() -> Parser:
     number = tok_(Spec.NUMBER) >> int
     everything = (
-        tok_(Spec.OP)
-        | tok_(Spec.NUMBER)
-        | tok_(Spec.LPAREN)
-        | tok_(Spec.RPAREN)
-        | tok_(Spec.COMMA)
-        | tok_(Spec.GIBBERISH)
+        parser_reflective(Spec.OP)
+        | parser_reflective(Spec.NUMBER)
+        | parser_reflective(Spec.LPAREN)
+        | parser_reflective(Spec.RPAREN)
+        | parser_reflective(Spec.COMMA)
+        | parser_reflective(Spec.GIBBERISH)
     )
 
-    mul_components = (
-        tok_(Spec.OP, "mul"),
-        tok_(Spec.LPAREN),
-        number,
-        tok_(Spec.COMMA),
-        number,
-        tok_(Spec.RPAREN),
-    )
-    mul = reduce(operator.add, mul_components) >> (
-        lambda elem: Mul(elem[2], elem[4], len(mul_components))
+    mul = (
+        tok_(Spec.OP, "mul")
+        + tok_(Spec.LPAREN)
+        + number
+        + tok_(Spec.COMMA)
+        + number
+        + tok_(Spec.RPAREN)
+    ) >> (lambda elem: Mul(elem[2], elem[4]))
+
+    do = (tok_(Spec.OP, "do") + tok_(Spec.LPAREN) + tok_(Spec.RPAREN)) >> (
+        lambda elem: Condition(True)
     )
 
-    do_components = (
-        tok_(Spec.OP, "do"),
-        tok_(Spec.LPAREN),
-        tok_(Spec.RPAREN),
-    )
-    do = reduce(operator.add, do_components) >> (
-        lambda elem: Condition(True, len(do_components))
-    )
-
-    dont_components = (
-        tok_(Spec.OP, "don't"),
-        tok_(Spec.LPAREN),
-        tok_(Spec.RPAREN),
-    )
-    dont = reduce(operator.add, dont_components) >> (
-        lambda elem: Condition(False, len(dont_components))
+    dont = (tok_(Spec.OP, "don't") + tok_(Spec.LPAREN) + tok_(Spec.RPAREN)) >> (
+        lambda elem: Condition(False)
     )
 
     expr = do | dont | mul
 
-    return expr + many(everything) + finished >> itemgetter(0)
+    return expr + many(everything) + finished >> (
+        lambda elem: (elem[0], tuple(elem[1]))
+    )
 
 
 def token_lstrip(tokens: tuple[Token, ...], pointer: int) -> int:
@@ -146,19 +136,15 @@ def token_lstrip(tokens: tuple[Token, ...], pointer: int) -> int:
 
 
 def parse(parser: Parser, tokens: tuple[Token, ...]) -> tuple[Expr, ...]:
-    result, pointer = [], token_lstrip(tokens, 0)
+    result = []
 
-    while True:
-        if pointer == len(tokens):
-            break
-
+    while tokens:
         try:
-            expr = parser.parse(tokens[pointer:])
-            pointer = token_lstrip(tokens, pointer + expr.offset)
+            expr, tokens = parser.parse(tokens)
             result.append(expr)
 
         except NoParseError:
-            pointer = token_lstrip(tokens, pointer + 1)
+            tokens = tokens[1:]
 
     return tuple(result)
 

@@ -106,7 +106,7 @@ def test_parse_mul() -> None:
         Token_(Spec.NUMBER, "46"),
         Token_(Spec.RPAREN, ")"),
     )
-    expected = Mul(44, 46, 6)
+    expected = (Mul(44, 46), ())
 
     assert parser.parse(input) == expected
 
@@ -115,7 +115,7 @@ def test_parse() -> None:
     parser = parser_generate()
 
     input = "mul(44,46)"
-    expected = (Mul(44, 46, 6),)
+    expected = (Mul(44, 46),)
 
     assert parse(parser, tokenize(input)) == expected
 
@@ -127,38 +127,38 @@ def test_parse() -> None:
 
     input = "xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))"
     expected = (
-        Mul(2, 4, 6),
-        Mul(5, 5, 6),
-        Mul(11, 8, 6),
-        Mul(8, 5, 6),
+        Mul(2, 4),
+        Mul(5, 5),
+        Mul(11, 8),
+        Mul(8, 5),
     )
 
     assert parse(parser, tokenize(input)) == expected
 
     input = "xmul(2,4)&mul[3,7]!^don't()_mul(5,5)+mul(32,64](mul(11,8)undo()?mul(8,5))"
     expected = (
-        Mul(2, 4, 6),
-        Condition(False, 3),
-        Mul(5, 5, 6),
-        Mul(11, 8, 6),
-        Condition(True, 3),
-        Mul(8, 5, 6),
+        Mul(2, 4),
+        Condition(False),
+        Mul(5, 5),
+        Mul(11, 8),
+        Condition(True),
+        Mul(8, 5),
     )
 
     assert parse(parser, tokenize(input)) == expected
 
 
 def test_evaluate_skip_condition() -> None:
-    input = (Mul(44, 46, 6),)
+    input = (Mul(44, 46),)
     expected = 2024
 
     assert evaluate_skip_condition(input) == expected
 
     input = (
-        Mul(2, 4, 6),
-        Mul(5, 5, 6),
-        Mul(11, 8, 6),
-        Mul(8, 5, 6),
+        Mul(2, 4),
+        Mul(5, 5),
+        Mul(11, 8),
+        Mul(8, 5),
     )
     expected = 161
 
@@ -174,12 +174,12 @@ def test_part1() -> None:
 
 def test_evaluate_with_condition():
     input = (
-        Mul(2, 4, 6),
-        Condition(False, 3),
-        Mul(5, 5, 6),
-        Mul(11, 8, 6),
-        Condition(True, 3),
-        Mul(8, 5, 6),
+        Mul(2, 4),
+        Condition(False),
+        Mul(5, 5),
+        Mul(11, 8),
+        Condition(True),
+        Mul(8, 5),
     )
     expected = 48
 
