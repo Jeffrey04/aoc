@@ -57,23 +57,25 @@ def move(items: tuple[int, ...], current: int, incoming: int) -> tuple[int, ...]
         ),
     )
 
+
 def sort_pages(
-    rules: tuple[tuple[int, int], ...], pages: tuple[int, ...], pointer: int = 0
+    rules: tuple[tuple[int, int], ...],
+    pages: tuple[int, ...],
+    pointer: int = 0,
 ) -> tuple[int, ...]:
-    return (
-        sort_pages(
-            rules,
-            *next(
-                (
-                    (move(pages, pointer, incoming), 0)
-                    for incoming in range(pointer + 1, len(pages))
-                    if check_pair(rules, pages[pointer], pages[incoming]) is False
-                ),
-                (pages, pointer + 1),
+    if pointer == (len(pages) - 1):
+        return pages
+
+    return sort_pages(
+        rules,
+        *next(
+            (
+                (move(pages, pointer, incoming), pointer)
+                for incoming in range(pointer + 1, len(pages))
+                if check_pair(rules, pages[pointer], pages[incoming]) is False
             ),
-        )
-        if pointer < (len(pages) - 1)
-        else pages
+            (pages, pointer + 1),
+        ),
     )
 
 
