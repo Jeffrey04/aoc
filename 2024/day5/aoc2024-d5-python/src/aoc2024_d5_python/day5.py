@@ -31,9 +31,6 @@ def check_pair(rules: tuple[tuple[int, int], ...], alpha: int, beta: int) -> boo
 
 
 def check_pages(rules: tuple[tuple[int, int], ...], pages: tuple[int, ...]) -> bool:
-    def inner(current, incoming):
-        pass
-
     return all(
         check_pair(rules, pages[idx], beta)
         # loop till second last
@@ -47,7 +44,7 @@ def get_middle(pages: tuple[int, ...]) -> int:
     return pages[floor(len(pages) / 2)]
 
 
-def move(items: tuple[int, ...], current: int, incoming: int):
+def move(items: tuple[int, ...], current: int, incoming: int) -> tuple[int, ...]:
     assert incoming > current
 
     return (
@@ -83,7 +80,12 @@ def sort_pages(
 def part1(input: str) -> int:
     rules, pages_list = parse(input)
 
-    return sum(get_middle(pages) for pages in pages_list if check_pages(rules, pages))
+    return sum(
+        get_middle(pages)
+        # fmt: skip
+        for pages in pages_list
+        if check_pages(rules, pages)
+    )
 
 
 def part2(input: str) -> int:
