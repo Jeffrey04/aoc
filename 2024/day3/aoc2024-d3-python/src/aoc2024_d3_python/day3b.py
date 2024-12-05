@@ -7,7 +7,7 @@ from sys import stdin
 from typing import Any
 
 from funcparserlib.lexer import Token, TokenSpec, make_tokenizer
-from funcparserlib.parser import NoParseError, Parser, finished, many, tok
+from funcparserlib.parser import Parser, finished, many, tok
 
 
 class Spec(Enum):
@@ -74,18 +74,14 @@ def tokenize(input: str) -> tuple[Token, ...]:
     )
 
 
-def parser_reflective(name: Spec) -> Parser:
-    return tok_(name) >> (lambda value: Token_(name, value))
-
-
 def parse(tokens: tuple[Token, ...]) -> tuple[Expr, ...]:
     number = tok_(Spec.NUMBER) >> int
     everything = (
-        parser_reflective(Spec.NUMBER)
-        | parser_reflective(Spec.LPAREN)
-        | parser_reflective(Spec.RPAREN)
-        | parser_reflective(Spec.COMMA)
-        | parser_reflective(Spec.GIBBERISH)
+        tok_(Spec.NUMBER)
+        | tok_(Spec.LPAREN)
+        | tok_(Spec.RPAREN)
+        | tok_(Spec.COMMA)
+        | tok_(Spec.GIBBERISH)
     )
 
     mul = (
