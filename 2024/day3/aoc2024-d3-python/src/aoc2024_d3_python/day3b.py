@@ -56,24 +56,11 @@ def tok_(name: Spec, *args: Any, **kwargs: Any) -> Parser[Token, str]:
 
 
 def tokenize(input: str) -> tuple[Token, ...]:
-    def inner(current: list[Token], incoming: Token) -> list[Token]:
-        if not current:
-            current.append(incoming)
-            return current
-
-        match incoming.type:
-            case Spec.GIBBERISH.name:
-                if current[-1].type != incoming.type:
-                    current.append(incoming)
-                return current
-
-            case _:
-                current.append(incoming)
-                return current
-
     tokenizer = make_tokenizer(
         [
-            TokenSpec_(Spec.OP, r"mul|don\'t|do"),
+            TokenSpec_(
+                Spec.OP, r"mul(?=\(\d{1,3},\d{1,3}\))|do(?=\(\))|don\'t(?=\(\))"
+            ),
             TokenSpec_(Spec.NUMBER, r"\d{1,3}"),
             TokenSpec_(Spec.LPAREN, r"\("),
             TokenSpec_(Spec.RPAREN, r"\)"),
@@ -82,18 +69,19 @@ def tokenize(input: str) -> tuple[Token, ...]:
         ]
     )
 
-    return tuple(reduce(inner, tokenizer(input), []))
+    return tuple(
+        token for token in tokenizer(input) if token.type != Spec.GIBBERISH.name
+    )
 
 
 def parser_reflective(name: Spec) -> Parser:
     return tok_(name) >> (lambda value: Token_(name, value))
 
 
-def parser_generate() -> Parser:
+def parse(tokens: tuple[Token, ...]) -> tuple[Expr, ...]:
     number = tok_(Spec.NUMBER) >> int
     everything = (
-        parser_reflective(Spec.OP)
-        | parser_reflective(Spec.NUMBER)
+        parser_reflective(Spec.NUMBER)
         | parser_reflective(Spec.LPAREN)
         | parser_reflective(Spec.RPAREN)
         | parser_reflective(Spec.COMMA)
@@ -118,35 +106,11 @@ def parser_generate() -> Parser:
     )
 
     expr = do | dont | mul
+    call = many(everything) + expr + many(everything) >> operator.itemgetter(1)
 
-    return expr + many(everything) + finished >> (
-        lambda elem: (elem[0], tuple(elem[1]))
-    )
+    program = many(call) + finished >> (lambda elem: tuple(elem[0]))
 
-
-def token_lstrip(tokens: tuple[Token, ...], pointer: int) -> int:
-    return next(
-        (
-            pointer + idx
-            for idx, token in enumerate(tokens[pointer:])
-            if token.type == Spec.OP.name
-        ),
-        len(tokens),
-    )
-
-
-def parse(parser: Parser, tokens: tuple[Token, ...]) -> tuple[Expr, ...]:
-    result = []
-
-    while tokens:
-        try:
-            expr, tokens = parser.parse(tokens)
-            result.append(expr)
-
-        except NoParseError:
-            tokens = tokens[1:]
-
-    return tuple(result)
+    return program.parse(tokens)
 
 
 def evaluate_skip_condition(expressions: tuple[Expr, ...]) -> int:
@@ -181,11 +145,11 @@ def evaluate_with_condition(expressions: tuple[Expr, ...]) -> int:
 
 
 def part1(input: str) -> int:
-    return evaluate_skip_condition(parse(parser_generate(), tokenize(input.strip())))
+    return evaluate_skip_condition(parse(tokenize(input.strip())))
 
 
 def part2(input: str) -> int:
-    return evaluate_with_condition(parse(parser_generate(), tokenize(input.strip())))
+    return evaluate_with_condition(parse(tokenize(input.strip())))
 
 
 def main():
