@@ -45,7 +45,7 @@ def get_middle(pages: tuple[int, ...]) -> int:
 
 
 def move(items: tuple[int, ...], current: int, incoming: int) -> tuple[int, ...]:
-    assert incoming > current and incoming != current
+    assert incoming > current
 
     return (
         *items[:current],
