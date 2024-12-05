@@ -45,7 +45,7 @@ def get_middle(pages: tuple[int, ...]) -> int:
 
 
 def move(items: tuple[int, ...], current: int, incoming: int) -> tuple[int, ...]:
-    assert incoming > current
+    assert incoming > current and incoming != current
 
     return (
         *items[:current],
@@ -64,19 +64,20 @@ def sort_pages(
     pointer: int = 0,
     subpointer: int = 0,
 ) -> tuple[int, ...]:
-    if pointer == (len(pages) - 1):
-        return pages
-
-    return sort_pages(
-        rules,
-        *next(
-            (
-                (move(pages, pointer, incoming), pointer, subpointer + 2)
-                for incoming in range(subpointer, len(pages))
-                if check_pair(rules, pages[pointer], pages[incoming]) is False
+    return (
+        sort_pages(
+            rules,
+            *next(
+                (
+                    (move(pages, pointer, incoming), pointer, pointer + 2)
+                    for incoming in range(subpointer, len(pages))
+                    if check_pair(rules, pages[pointer], pages[incoming]) is False
+                ),
+                (pages, pointer + 1, pointer + 2),
             ),
-            (pages, pointer + 1, pointer + 1),
-        ),
+        )
+        if pointer < (len(pages) - 1)
+        else pages
     )
 
 
