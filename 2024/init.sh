@@ -14,6 +14,7 @@ cp ../../day1/aoc2024-d1-python/Makefile .
 
 mkdir tests
 touch "tests/test_day$1.py"
+touch "src/aoc2024_d$1_python/day$1.py"
 
 echo "source .venv/bin/activate" > .envrc
 direnv allow .

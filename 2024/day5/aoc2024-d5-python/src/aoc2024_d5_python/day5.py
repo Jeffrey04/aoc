@@ -1,0 +1,102 @@
+from functools import reduce
+from math import floor
+from sys import stdin
+
+
+def parse(
+    input: str,
+) -> tuple[tuple[tuple[int, int], ...], tuple[tuple[int, ...], ...]]:
+    def inner(
+        current, incoming
+    ) -> tuple[tuple[tuple[int, int], ...], tuple[tuple[int, ...], ...]]:
+        rules, pages = current
+
+        if "|" in incoming:
+            rules += (tuple(int(item) for item in incoming.strip().split("|")),)
+        else:
+            pages += (tuple(int(item) for item in incoming.strip().split(",")),)
+
+        return rules, pages
+
+    return reduce(
+        inner, filter(lambda line: line.strip(), input.strip().splitlines()), ((), ())
+    )
+
+
+def check_pair(rules: tuple[tuple[int, int], ...], alpha: int, beta: int) -> bool:
+    return ((beta, alpha) in rules) is False
+
+
+def check_pages(rules: tuple[tuple[int, int], ...], pages: tuple[int, ...]) -> bool:
+    def inner(current, incoming):
+        pass
+
+    return all(
+        check_pair(rules, pages[idx], beta)
+        # loop till second last
+        for idx in range(len(pages) - 1)
+        # inner loop from second element
+        for beta in pages[idx + 1 :]
+    )
+
+
+def get_middle(pages: tuple[int, ...]) -> int:
+    return pages[floor(len(pages) / 2)]
+
+
+def move(items: tuple[int, ...], current: int, incoming: int):
+    assert incoming > current
+
+    result = list(items)
+    result.insert(current, result.pop(incoming))
+
+    return tuple(result)
+
+
+def sort_pages(
+    rules: tuple[tuple[int, int], ...], pages: tuple[int, ...]
+) -> tuple[int, ...]:
+    result, pointer = pages, 0
+
+    while True:
+        if pointer == (len(pages) - 1):
+            break
+
+        changed = False
+
+        for incoming in range(pointer + 1, len(pages)):
+            if check_pair(rules, result[pointer], result[incoming]) is False:
+                result = move(result, pointer, incoming)
+                changed = True
+                break
+
+        pointer = 0 if changed else pointer + 1
+
+    return result
+
+
+def part1(input: str) -> int:
+    rules, pages_list = parse(input)
+
+    return sum(get_middle(pages) for pages in pages_list if check_pages(rules, pages))
+
+
+def part2(input: str) -> int:
+    rules, pages_list = parse(input)
+
+    return sum(
+        get_middle(sort_pages(rules, pages))
+        # fmt: skip
+        for pages in pages_list
+        if check_pages(rules, pages) is False
+    )
+
+
+def main() -> None:
+    input = stdin.read()
+
+    print("PYTHON:", part1(input), part2(input))
+
+
+if __name__ == "__main__":
+    main()
