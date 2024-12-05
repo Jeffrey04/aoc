@@ -47,10 +47,15 @@ def get_middle(pages: tuple[int, ...]) -> int:
 def move(items: tuple[int, ...], current: int, incoming: int):
     assert incoming > current
 
-    result = list(items)
-    result.insert(current, result.pop(incoming))
-
-    return tuple(result)
+    return (
+        *items[:current],
+        items[incoming],
+        *tuple(
+            item
+            for idx, item in enumerate(items)
+            if (idx >= current) and not (idx == incoming)
+        ),
+    )
 
 def sort_pages(
     rules: tuple[tuple[int, int], ...], pages: tuple[int, ...], pointer: int = 0
