@@ -27,7 +27,7 @@ def parse(
 
 
 def check_pair(rules: tuple[tuple[int, int], ...], alpha: int, beta: int) -> bool:
-    return ((beta, alpha) in rules) is False
+    return (beta, alpha) not in rules
 
 
 def check_pages(rules: tuple[tuple[int, int], ...], pages: tuple[int, ...]) -> bool:
