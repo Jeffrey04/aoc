@@ -62,6 +62,7 @@ def sort_pages(
     rules: tuple[tuple[int, int], ...],
     pages: tuple[int, ...],
     pointer: int = 0,
+    subpointer: int = 0,
 ) -> tuple[int, ...]:
     if pointer == (len(pages) - 1):
         return pages
@@ -70,11 +71,11 @@ def sort_pages(
         rules,
         *next(
             (
-                (move(pages, pointer, incoming), pointer)
-                for incoming in range(pointer + 1, len(pages))
+                (move(pages, pointer, incoming), pointer, subpointer + 2)
+                for incoming in range(subpointer, len(pages))
                 if check_pair(rules, pages[pointer], pages[incoming]) is False
             ),
-            (pages, pointer + 1),
+            (pages, pointer + 1, pointer + 1),
         ),
     )
 
