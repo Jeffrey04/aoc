@@ -12,11 +12,14 @@ def parse(
         rules, pages = current
 
         if "|" in incoming:
-            rules += (tuple(int(item) for item in incoming.strip().split("|")),)
-        else:
-            pages += (tuple(int(item) for item in incoming.strip().split(",")),)
+            return rules + (
+                tuple(int(item) for item in incoming.strip().split("|")),
+            ), pages
 
-        return rules, pages
+        else:
+            return rules, pages + (
+                tuple(int(item) for item in incoming.strip().split(",")),
+            )
 
     return reduce(
         inner, filter(lambda line: line.strip(), input.strip().splitlines()), ((), ())
