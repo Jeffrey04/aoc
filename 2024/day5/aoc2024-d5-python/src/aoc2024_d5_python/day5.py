@@ -52,27 +52,24 @@ def move(items: tuple[int, ...], current: int, incoming: int):
 
     return tuple(result)
 
-
 def sort_pages(
-    rules: tuple[tuple[int, int], ...], pages: tuple[int, ...]
+    rules: tuple[tuple[int, int], ...], pages: tuple[int, ...], pointer: int = 0
 ) -> tuple[int, ...]:
-    result, pointer = pages, 0
-
-    while True:
-        if pointer == (len(pages) - 1):
-            break
-
-        changed = False
-
-        for incoming in range(pointer + 1, len(pages)):
-            if check_pair(rules, result[pointer], result[incoming]) is False:
-                result = move(result, pointer, incoming)
-                changed = True
-                break
-
-        pointer = 0 if changed else pointer + 1
-
-    return result
+    return (
+        sort_pages(
+            rules,
+            *next(
+                (
+                    (move(pages, pointer, incoming), 0)
+                    for incoming in range(pointer + 1, len(pages))
+                    if check_pair(rules, pages[pointer], pages[incoming]) is False
+                ),
+                (pages, pointer + 1),
+            ),
+        )
+        if pointer < (len(pages) - 1)
+        else pages
+    )
 
 
 def part1(input: str) -> int:
