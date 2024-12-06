@@ -131,7 +131,7 @@ def input_insert_obstacle(input: str, point: tuple[int, int]) -> str:
     return "\n".join(
         "".join(
             SYMBOL_OBSTRUCTION if point == (x, y) else item
-            for x, item in enumerate(tuple(row))
+            for x, item in enumerate(row)
         )
         for y, row in enumerate(input.strip().splitlines())
     )
