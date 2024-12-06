@@ -23,7 +23,7 @@ def test_parse() -> None:
 #
 ^
 """
-    expected = Board(((0, 0),), Guard((0, 1)), (1, 2))
+    expected = Board(((0, 0),), Guard((0, 1)), (1, 2), ROTATE_RIGHT)
 
     assert parse(input) == expected
 
@@ -52,13 +52,14 @@ def test_parse() -> None:
         ),
         Guard((4, 6)),
         (10, 10),
+        ROTATE_RIGHT,
     )
 
     assert parse(input) == expected
 
 
 def test_in_board() -> None:
-    board = Board((), Guard((0, 0)), (1, 1))
+    board = Board((), Guard((0, 0)), (1, 1), ROTATE_RIGHT)
 
     input = (-1, 0)
     expected = False
@@ -97,7 +98,7 @@ def test_in_board() -> None:
 
 
 def test_check_is_obstruction() -> None:
-    board = Board(((0, 0),), Guard((0, 1)), (1, 2))
+    board = Board(((0, 0),), Guard((0, 1)), (1, 2), ROTATE_RIGHT)
 
     input = (0, 0)
     expected = True
@@ -111,7 +112,7 @@ def test_check_is_obstruction() -> None:
 
 
 def test_check_guard_can_move() -> None:
-    board = Board(((0, 0),), Guard((0, 1)), (1, 2))
+    board = Board(((0, 0),), Guard((0, 1)), (1, 2), ROTATE_RIGHT)
 
     expected = False
 
@@ -124,7 +125,7 @@ def test_check_guard_can_move() -> None:
 
 
 def test_move_guard() -> None:
-    board = Board(((0, 0),), Guard((0, 1)), (1, 2))
+    board = Board(((0, 0),), Guard((0, 1)), (1, 2), ROTATE_RIGHT)
     assert board.guard.direction == (0, -1)
     assert board.guard.position == (0, 1)
 

@@ -41,6 +41,7 @@ class Board:
     obstruction: tuple[tuple[int, int], ...]
     guard: Guard
     dimension: tuple[int, int]
+    rotation: dict[tuple[int, int], int]
 
     def check_is_in_board(self, x: int, y: int) -> bool:
         return not (x < 0 or y < 0 or x >= self.dimension[0] or y >= self.dimension[1])
@@ -59,7 +60,7 @@ class Board:
                 self.guard.position = destination
 
             case False:
-                self.guard.rotate(ROTATE_RIGHT)
+                self.guard.rotate(self.rotation)
 
         return self.guard.position
 
@@ -83,6 +84,7 @@ def parse(input: str) -> Board:
         tuple(finder(board, SYMBOL_OBSTRUCTION)),
         Guard(position),
         ((len(board[0]), len(board))),
+        ROTATE_RIGHT,
     )
 
 
@@ -112,24 +114,33 @@ def part2(input: str) -> int:
             db.from_sequence(  # type: ignore
                 # condition 1: point must be a original visited point
                 set(
-                    (point, len(steps), input)
+                    (point, input_insert_obstacle(input, point))
                     for _, point in steps[:-1]
                     if point != initial
                 ),
                 50,
             )
-            .starmap(check_loopable)
+            .starmap(check_is_loopable)
             .filter(None)
             .count()
             .compute()
         )
 
 
-def check_loopable(point: tuple[int, int], max_steps: int, input: str) -> bool:
+def input_insert_obstacle(input: str, point: tuple[int, int]) -> str:
+    return "\n".join(
+        "".join(
+            SYMBOL_OBSTRUCTION if point == (x, y) else item
+            for x, item in enumerate(tuple(row))
+        )
+        for y, row in enumerate(input.strip().splitlines())
+    )
+
+
+def check_is_loopable(point: tuple[int, int], input: str) -> bool:
     result = False
 
     board = parse(input)
-    board.obstruction = board.obstruction + (point,)
 
     steps = []
 
