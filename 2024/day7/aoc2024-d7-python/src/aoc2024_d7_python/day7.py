@@ -1,6 +1,7 @@
 import operator
 from collections.abc import Callable
 from itertools import product
+from math import floor, log10
 from sys import stdin
 
 from toolz import thread_first
@@ -52,11 +53,11 @@ def part1(input: str) -> int:
 
 
 def int_concat(alpha: int, beta: int) -> int:
-    return int(f"{alpha}{beta}")
+    return alpha * (10 ** floor(log10(beta) + 1)) + beta
 
 
 def part2(input: str) -> int:
-    return evaluate(input, (operator.mul, int_concat, operator.add))
+    return evaluate(input, (operator.mul, operator.add, int_concat))
 
 
 def main() -> None:
