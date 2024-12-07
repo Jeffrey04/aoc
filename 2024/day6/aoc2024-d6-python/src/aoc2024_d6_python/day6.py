@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from sys import stdin
 
 import dask.bag as db
-from dask.diagnostics import ProgressBar  # type: ignore
 
 SYMBOL_GUARD = "^"
 SYMBOL_OBSTRUCTION = "#"
@@ -42,6 +41,9 @@ class Board:
     guard: Guard
     dimension: tuple[int, int]
     rotation: dict[tuple[int, int], int]
+
+    def add_obstacle(self, point: tuple[int, int]) -> None:
+        self.obstruction = self.obstruction + (point,)
 
     def check_is_in_board(self, x: int, y: int) -> bool:
         return not (x < 0 or y < 0 or x >= self.dimension[0] or y >= self.dimension[1])
@@ -109,31 +111,16 @@ def part2(input: str) -> int:
         if step[0] != step[1]:
             steps.append(step)
 
-    with ProgressBar():
-        return (
-            db.from_sequence(  # type: ignore
-                # condition 1: point must be a original visited point
-                set(
-                    (point, input_insert_obstacle(input, point))
-                    for _, point in steps[:-1]
-                    if point != initial
-                ),
-                50,
-            )
-            .starmap(check_is_loopable)
-            .filter(None)
-            .count()
-            .compute()
+    return (
+        db.from_sequence(  # type: ignore
+            # condition 1: point must be a original visited point
+            set((point, input) for _, point in steps[:-1] if point != initial),
+            5,
         )
-
-
-def input_insert_obstacle(input: str, point: tuple[int, int]) -> str:
-    return "\n".join(
-        "".join(
-            SYMBOL_OBSTRUCTION if point == (x, y) else item
-            for x, item in enumerate(row)
-        )
-        for y, row in enumerate(input.strip().splitlines())
+        .starmap(check_is_loopable)
+        .filter(None)
+        .count()
+        .compute()
     )
 
 
@@ -141,6 +128,7 @@ def check_is_loopable(point: tuple[int, int], input: str) -> bool:
     result = False
 
     board = parse(input)
+    board.add_obstacle(point)
 
     steps = []
 
