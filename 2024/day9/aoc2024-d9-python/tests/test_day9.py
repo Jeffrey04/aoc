@@ -1,6 +1,6 @@
 import pytest
 
-from aoc2024_d9_python.day9 import File, Layout, Space, parse, part1, part2
+from aoc2024_d9_python.day9 import parse, part1, part2
 
 input = ("12345", "2333133121414131402")
 
@@ -35,80 +35,80 @@ def test_move_block():
 
     expected = "02.111....2222."
 
-    layout.move_block()
+    layout.block_move()
     assert str(layout) == expected
 
     expected = "022111....222.."
 
-    layout.move_block()
+    layout.block_move()
     assert str(layout) == expected
 
     expected = "0221112...22..."
 
-    layout.move_block()
+    layout.block_move()
     assert str(layout) == expected
 
     expected = "02211122..2...."
 
-    layout.move_block()
+    layout.block_move()
     assert str(layout) == expected
 
     expected = "022111222......"
 
-    layout.move_block()
+    layout.block_move()
     assert str(layout) == expected
 
     with pytest.raises(AssertionError):
-        layout.move_block()
+        layout.block_move()
 
     layout = parse(input[1])
 
     expected = "009..111...2...333.44.5555.6666.777.88889."
-    layout.move_block()
+    layout.block_move()
     assert str(layout) == expected
 
     expected = "0099.111...2...333.44.5555.6666.777.8888.."
-    layout.move_block()
+    layout.block_move()
     assert str(layout) == expected
 
     expected = "00998111...2...333.44.5555.6666.777.888..."
-    layout.move_block()
+    layout.block_move()
     assert str(layout) == expected
 
     expected = "009981118..2...333.44.5555.6666.777.88...."
-    layout.move_block()
+    layout.block_move()
     assert str(layout) == expected
 
     expected = "0099811188.2...333.44.5555.6666.777.8....."
-    layout.move_block()
+    layout.block_move()
     assert str(layout) == expected
 
     expected = "009981118882...333.44.5555.6666.777......."
-    layout.move_block()
+    layout.block_move()
     assert str(layout) == expected
 
     expected = "0099811188827..333.44.5555.6666.77........"
-    layout.move_block()
+    layout.block_move()
     assert str(layout) == expected
 
     expected = "00998111888277.333.44.5555.6666.7........."
-    layout.move_block()
+    layout.block_move()
     assert str(layout) == expected
 
     expected = "009981118882777333.44.5555.6666..........."
-    layout.move_block()
+    layout.block_move()
     assert str(layout) == expected
 
     expected = "009981118882777333644.5555.666............"
-    layout.move_block()
+    layout.block_move()
     assert str(layout) == expected
 
     expected = "00998111888277733364465555.66............."
-    layout.move_block()
+    layout.block_move()
     assert str(layout) == expected
 
     expected = "0099811188827773336446555566.............."
-    layout.move_block()
+    layout.block_move()
     assert str(layout) == expected
 
 
@@ -133,14 +133,14 @@ def test_part1() -> None:
     assert part1(input[1]) == expected
 
 
-def test_find_space() -> None:
+def test_find_space_at_length() -> None:
     layout = parse(input[1])
     expected = 2
 
-    assert layout.find_space(2, len(layout.items)) == expected
+    assert layout.space_find_idx_by_length(2, len(layout.blocks)) == expected
 
     with pytest.raises(Exception):
-        assert layout.find_space(10, len(layout.items)) == expected
+        assert layout.space_find_idx_by_length(10, len(layout.blocks)) == expected
 
 
 def test_move_file() -> None:
@@ -148,22 +148,22 @@ def test_move_file() -> None:
 
     expected = "0099.111...2...333.44.5555.6666.777.8888.."
 
-    layout.move_file(9)
+    layout.file_move(9)
     assert str(layout) == expected
 
     expected = "0099.1117772...333.44.5555.6666.....8888.."
 
-    layout.move_file(7)
+    layout.file_move(7)
     assert str(layout) == expected
 
     expected = "0099.111777244.333....5555.6666.....8888.."
 
-    layout.move_file(4)
+    layout.file_move(4)
     assert str(layout) == expected
 
     expected = "00992111777.44.333....5555.6666.....8888.."
 
-    layout.move_file(2)
+    layout.file_move(2)
     assert str(layout) == expected
 
 

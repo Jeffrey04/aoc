@@ -19,96 +19,88 @@ class Space:
 class Layout:
     map: tuple[int, ...]
 
-    items: list[File | Space]
+    blocks: list[File | Space]
+
+    def block_move(self) -> None:
+        self.block_swap(
+            self.space_find_first_idx(),
+            self.file_find_last_idx(),
+        )
+
+    def block_swap(self, alpha: int, beta: int) -> None:
+        assert alpha < beta
+
+        # sequence matters
+        b, a = self.blocks.pop(beta), self.blocks.pop(alpha)
+
+        # sequence matters
+        self.blocks.insert(alpha, b)
+        self.blocks.insert(beta, a)
 
     def check_has_space(self) -> bool:
         return any(
             isinstance(item, File)
-            for item in self.items[
-                next(
-                    (
-                        idx
-                        for idx, item in enumerate(self.items)
-                        if isinstance(item, Space)
-                    ),
-                    len(self.items),
-                ) :
-            ]
+            for item in self.blocks[self.space_find_first_idx() :]
         )
-
-    def swap_block(self, alpha: int, beta: int) -> None:
-        assert alpha < beta
-
-        # sequence matters
-        b, a = self.items.pop(beta), self.items.pop(alpha)
-
-        # sequence matters
-        self.items.insert(alpha, b)
-        self.items.insert(beta, a)
-
-    def move_block(self) -> None:
-        assert self.check_has_space()
-
-        self.swap_block(
-            next(idx for idx, item in enumerate(self.items) if isinstance(item, Space)),
-            len(self.items)
-            + next(
-                -1 - idx
-                for idx, item in enumerate(self.items[::-1])
-                if isinstance(item, File)
-            ),
-        )
-
-    def compact_block(self) -> None:
-        while True:
-            try:
-                self.move_block()
-            except AssertionError:
-                break
 
     def checksum(self) -> int:
         return sum(
             idx * item.id
-            for idx, item in enumerate(self.items)
+            for idx, item in enumerate(self.blocks)
             if isinstance(item, File)
         )
 
-    def find_file(self, file_id: int) -> int:
+    def compact_block(self) -> None:
+        while self.check_has_space():
+            self.block_move()
+
+    def compact_file(self) -> None:
+        for file_id in range(len(self.map) // 2, -1, -1):
+            try:
+                self.file_move(file_id)
+            except Exception:
+                continue
+
+    def file_find_first_idx(self, file_id: int) -> int:
         return next(
             idx
-            for idx, item in enumerate(self.items)
+            for idx, item in enumerate(self.blocks)
             if isinstance(item, File) and item.id == file_id
         )
 
-    def find_space(self, length: int, max_search: int) -> int:
+    def file_find_last_idx(self) -> int:
+        return len(self.blocks) + next(
+            -1 - idx
+            for idx, item in enumerate(self.blocks[::-1])
+            if isinstance(item, File)
+        )
+
+    def file_move(self, file_id: int) -> None:
+        file_idx = self.file_find_first_idx(file_id)
+
+        space_idx = self.space_find_idx_by_length(self.map[file_id * 2], file_idx)
+
+        for idx in range(self.map[file_id * 2]):
+            self.block_swap(space_idx + idx, file_idx + idx)
+
+    def space_find_first_idx(self) -> int:
+        return next(
+            (idx for idx, item in enumerate(self.blocks) if isinstance(item, Space)),
+            len(self.blocks),
+        )
+
+    def space_find_idx_by_length(self, length: int, max_search: int) -> int:
         return next(
             idx
             for idx, window in enumerate(
-                sliding_window(length, self.items[:max_search])
+                sliding_window(length, self.blocks[:max_search])
             )
             if all(isinstance(item, Space) for item in window)
         )
 
-    def move_file(self, file_id) -> None:
-        file_idx = self.find_file(file_id)
-
-        space_idx = self.find_space(self.map[file_id * 2], file_idx)
-
-        for idx in range(self.map[file_id * 2]):
-            self.swap_block(space_idx + idx, file_idx + idx)
-
-    def compact_file(self) -> None:
-        for file_id in reversed(
-            tuple(idx // 2 for idx, size in enumerate(self.map) if idx % 2 == 0)
-        ):
-            try:
-                self.move_file(file_id)
-            except Exception:
-                continue
-
     def __str__(self) -> str:
         return "".join(
-            str(item.id) if isinstance(item, File) else "." for item in self.items
+            str(item.id) if isinstance(item, File) else "." for item in self.blocks
         )
 
 
