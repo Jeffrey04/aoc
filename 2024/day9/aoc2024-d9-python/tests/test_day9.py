@@ -19,15 +19,15 @@ def test_parse() -> None:
 def test_check_has_space() -> None:
     expected = True
 
-    assert parse(input[0]).check_has_space() == expected
+    assert parse(input[0]).check_has_space_between_files() == expected
 
     expected = False
 
-    assert parse("10305").check_has_space() == expected
+    assert parse("10305").check_has_space_between_files() == expected
 
     expected = False
 
-    assert parse("103051").check_has_space() == expected
+    assert parse("103051").check_has_space_between_files() == expected
 
 
 def test_move_block():

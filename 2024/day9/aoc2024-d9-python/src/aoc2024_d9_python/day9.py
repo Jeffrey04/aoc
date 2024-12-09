@@ -37,7 +37,7 @@ class Layout:
         self.blocks.insert(alpha, b)
         self.blocks.insert(beta, a)
 
-    def check_has_space(self) -> bool:
+    def check_has_space_between_files(self) -> bool:
         return any(
             isinstance(item, File)
             for item in self.blocks[self.space_find_first_idx() :]
@@ -51,7 +51,7 @@ class Layout:
         )
 
     def compact_block(self) -> None:
-        while self.check_has_space():
+        while self.check_has_space_between_files():
             self.block_move()
 
     def compact_file(self) -> None:
@@ -90,10 +90,12 @@ class Layout:
         )
 
     def space_find_idx_by_length(self, length: int, max_search: int) -> int:
-        return next(
+        first_space_idx = self.space_find_first_idx()
+
+        return first_space_idx + next(
             idx
             for idx, window in enumerate(
-                sliding_window(length, self.blocks[:max_search])
+                sliding_window(length, self.blocks[first_space_idx:max_search])
             )
             if all(isinstance(item, Space) for item in window)
         )

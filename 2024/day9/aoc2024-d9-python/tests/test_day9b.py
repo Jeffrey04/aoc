@@ -2,7 +2,7 @@ import pytest
 
 from aoc2024_d9_python.day9b import (
     block_move,
-    check_has_space,
+    check_has_space_between_files,
     compact_block,
     file_move,
     parse,
@@ -32,17 +32,17 @@ def test_check_has_space() -> None:
     expected = True
 
     _, blocks = parse(input[0])
-    assert check_has_space(blocks) == expected
+    assert check_has_space_between_files(blocks) == expected
 
     expected = False
 
     _, blocks = parse("10305")
-    assert check_has_space(blocks) == expected
+    assert check_has_space_between_files(blocks) == expected
 
     expected = False
 
     _, blocks = parse("103051")
-    assert check_has_space(blocks) == expected
+    assert check_has_space_between_files(blocks) == expected
 
 
 def test_move_block():

@@ -18,18 +18,16 @@ def block_swap(
 ) -> tuple[int | None, ...]:
     assert alpha < beta
 
-    def get(idx: int, item: int | None, alpha: int, beta: int) -> int | None:
-        if idx == alpha:
-            return blocks[beta]
-        elif idx == beta:
-            return blocks[alpha]
-        else:
-            return item
-
-    return tuple(get(idx, item, alpha, beta) for idx, item in enumerate(blocks))
+    return (
+        *blocks[:alpha],
+        blocks[beta],
+        *blocks[alpha + 1 : beta],
+        blocks[alpha],
+        *blocks[beta + 1 :],
+    )
 
 
-def check_has_space(blocks: tuple[int | None, ...]) -> bool:
+def check_has_space_between_files(blocks: tuple[int | None, ...]) -> bool:
     return any(isinstance(item, int) for item in blocks[space_find_first_idx(blocks) :])
 
 
@@ -41,7 +39,7 @@ def compact_block(blocks: tuple[int | None, ...]) -> tuple[int | None, ...]:
     # recursion will be super duper slow
     result = blocks
 
-    while check_has_space(result):
+    while check_has_space_between_files(result):
         result = block_move(result)
 
     return result
@@ -122,9 +120,12 @@ def space_find_first_idx(blocks: tuple[int | None, ...]) -> int:
 def space_find_idx_by_length(
     blocks: tuple[int | None, ...], length: int, max_search: int
 ) -> int:
-    return next(
+    first_space_idx = space_find_first_idx(blocks)
+    return first_space_idx + next(
         idx
-        for idx, window in enumerate(sliding_window(length, blocks[:max_search]))
+        for idx, window in enumerate(
+            sliding_window(length, blocks[first_space_idx:max_search])
+        )
         if all(item is None for item in window)
     )
 
