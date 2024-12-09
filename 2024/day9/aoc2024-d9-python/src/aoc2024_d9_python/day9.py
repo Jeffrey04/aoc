@@ -2,6 +2,9 @@ from dataclasses import dataclass
 from itertools import chain, repeat
 from sys import stdin
 
+from toolz import sliding_window
+
+
 @dataclass
 class File:
     id: int
@@ -33,26 +36,30 @@ class Layout:
             ]
         )
 
+    def swap_block(self, alpha: int, beta: int) -> None:
+        assert alpha < beta
+
+        # sequence matters
+        b, a = self.items.pop(beta), self.items.pop(alpha)
+
+        # sequence matters
+        self.items.insert(alpha, b)
+        self.items.insert(beta, a)
+
     def move_block(self) -> None:
         assert self.check_has_space()
 
-        first_space = next(
-            idx for idx, item in enumerate(self.items) if isinstance(item, Space)
-        )
-
-        self.items.append(self.items.pop(first_space))
-        self.items.insert(
-            first_space,
-            self.items.pop(
-                next(
-                    -1 - idx
-                    for idx, item in enumerate(self.items[::-1])
-                    if isinstance(item, File)
-                )
+        self.swap_block(
+            next(idx for idx, item in enumerate(self.items) if isinstance(item, Space)),
+            len(self.items)
+            + next(
+                -1 - idx
+                for idx, item in enumerate(self.items[::-1])
+                if isinstance(item, File)
             ),
         )
 
-    def compact(self) -> None:
+    def compact_block(self) -> None:
         while True:
             try:
                 self.move_block()
@@ -66,27 +73,38 @@ class Layout:
             if isinstance(item, File)
         )
 
-    def find_space(self, length: int) -> int:
-        # FIXME: cannot use self.map to find first current available space
-        try:
-            return sum(self.map[:next(idx for idx, item in enumerate(self.map) if (idx % 2) == 1 and length <= item)])
-        except StopIteration as e:
-            raise Exception('Cannot find space') from e
-
-    def move_file(self, file_id) -> None:
-        file_length = next(
-            size for idx, size in enumerate(self.map) if idx % 2 == 0 and idx / 2 == file_id
+    def find_file(self, file_id: int) -> int:
+        return next(
+            idx
+            for idx, item in enumerate(self.items)
+            if isinstance(item, File) and item.id == file_id
         )
 
-        # FIXME
-        # self.find_space()
+    def find_space(self, length: int, max_search: int) -> int:
+        return next(
+            idx
+            for idx, window in enumerate(
+                sliding_window(length, self.items[:max_search])
+            )
+            if all(isinstance(item, Space) for item in window)
+        )
 
+    def move_file(self, file_id) -> None:
+        file_idx = self.find_file(file_id)
 
-    def swap(self, file_id, space_id) -> None:
-        pass
+        space_idx = self.find_space(self.map[file_id * 2], file_idx)
 
-    def compact2() -> None:
-        pass
+        for idx in range(self.map[file_id * 2]):
+            self.swap_block(space_idx + idx, file_idx + idx)
+
+    def compact_file(self) -> None:
+        for file_id in reversed(
+            tuple(idx // 2 for idx, size in enumerate(self.map) if idx % 2 == 0)
+        ):
+            try:
+                self.move_file(file_id)
+            except Exception:
+                continue
 
     def __str__(self) -> str:
         return "".join(
@@ -111,7 +129,15 @@ def parse(input: str) -> Layout:
 def part1(input: str) -> int:
     layout = parse(input.strip())
 
-    layout.compact()
+    layout.compact_block()
+
+    return layout.checksum()
+
+
+def part2(input: str) -> int:
+    layout = parse(input.strip())
+
+    layout.compact_file()
 
     return layout.checksum()
 
@@ -119,7 +145,7 @@ def part1(input: str) -> int:
 def main() -> None:
     input = stdin.read()
 
-    print("PYTHON:", part1(input))
+    print("PYTHON:", part1(input), part2(input))
 
 
 if __name__ == "__main__":

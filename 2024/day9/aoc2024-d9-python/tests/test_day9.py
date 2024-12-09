@@ -1,176 +1,67 @@
 import pytest
 
-from aoc2024_d9_python.day9 import File, Layout, Space, parse, part1
+from aoc2024_d9_python.day9 import File, Layout, Space, parse, part1, part2
+
+input = ("12345", "2333133121414131402")
 
 
 def test_parse() -> None:
-    input = "12345"
-    expected = Layout(
-        tuple(int(item) for item in input),
-        [
-            File(0),
-            Space(),
-            Space(),
-            File(1),
-            File(1),
-            File(1),
-            Space(),
-            Space(),
-            Space(),
-            Space(),
-            File(2),
-            File(2),
-            File(2),
-            File(2),
-            File(2),
-        ],
-    )
+    expected = "0..111....22222"
 
-    assert parse(input) == expected
+    assert str(parse(input[0])) == expected
 
-    input = "2333133121414131402"
     expected = "00...111...2...333.44.5555.6666.777.888899"
 
-    layout = parse(input)
+    layout = parse(input[1])
     assert str(layout) == expected
 
 
 def test_check_has_space() -> None:
-    input = Layout(
-        (1, 2, 3, 4, 5),
-        [
-            File(0),
-            Space(),
-            Space(),
-            File(1),
-            File(1),
-            File(1),
-            Space(),
-            Space(),
-            Space(),
-            Space(),
-            File(2),
-            File(2),
-            File(2),
-            File(2),
-            File(2),
-        ],
-    )
     expected = True
 
-    assert input.check_has_space() == expected
+    assert parse(input[0]).check_has_space() == expected
 
-    input = Layout(
-        (1, 0, 3, 0, 5),
-        [
-            File(0),
-            File(1),
-            File(1),
-            File(1),
-            File(2),
-            File(2),
-            File(2),
-            File(2),
-            File(2),
-        ],
-    )
     expected = False
 
-    assert input.check_has_space() == expected
+    assert parse("10305").check_has_space() == expected
 
-    input = Layout(
-        (1, 0, 3, 0, 5, 1),
-        [
-            File(0),
-            File(1),
-            File(1),
-            File(1),
-            File(2),
-            File(2),
-            File(2),
-            File(2),
-            File(2),
-            Space(),
-        ],
-    )
     expected = False
 
-    assert input.check_has_space() == expected
+    assert parse("103051").check_has_space() == expected
 
 
 def test_move_block():
-    layout = Layout(
-        (1, 2, 3, 4, 5),
-        [
-            File(0),
-            Space(),
-            Space(),
-            File(1),
-            File(1),
-            File(1),
-            Space(),
-            Space(),
-            Space(),
-            Space(),
-            File(2),
-            File(2),
-            File(2),
-            File(2),
-            File(2),
-        ],
-    )
+    layout = parse(input[0])
 
-    expected = [
-        File(0),
-        File(2),
-        Space(),
-        File(1),
-        File(1),
-        File(1),
-        Space(),
-        Space(),
-        Space(),
-        Space(),
-        File(2),
-        File(2),
-        File(2),
-        File(2),
-        Space(),
-    ]
+    expected = "02.111....2222."
 
     layout.move_block()
-    assert layout.items == expected
+    assert str(layout) == expected
 
-    expected = [
-        File(0),
-        File(2),
-        File(2),
-        File(1),
-        File(1),
-        File(1),
-        Space(),
-        Space(),
-        Space(),
-        Space(),
-        File(2),
-        File(2),
-        File(2),
-        Space(),
-        Space(),
-    ]
+    expected = "022111....222.."
 
     layout.move_block()
-    assert layout.items == expected
+    assert str(layout) == expected
+
+    expected = "0221112...22..."
 
     layout.move_block()
+    assert str(layout) == expected
+
+    expected = "02211122..2...."
+
     layout.move_block()
+    assert str(layout) == expected
+
+    expected = "022111222......"
+
     layout.move_block()
+    assert str(layout) == expected
 
     with pytest.raises(AssertionError):
         layout.move_block()
 
-    input = "2333133121414131402"
-    layout = parse(input)
+    layout = parse(input[1])
 
     expected = "009..111...2...333.44.5555.6666.777.88889."
     layout.move_block()
@@ -221,103 +112,62 @@ def test_move_block():
     assert str(layout) == expected
 
 
-def test_compact() -> None:
-    layout = Layout(
-        (1, 2, 3, 4, 5),
-        [
-            File(0),
-            Space(),
-            Space(),
-            File(1),
-            File(1),
-            File(1),
-            Space(),
-            Space(),
-            Space(),
-            Space(),
-            File(2),
-            File(2),
-            File(2),
-            File(2),
-            File(2),
-        ],
-    )
+def test_compact_block() -> None:
+    layout = parse(input[0])
 
-    expected = [
-        File(0),
-        File(2),
-        File(2),
-        File(1),
-        File(1),
-        File(1),
-        File(2),
-        File(2),
-        File(2),
-        Space(),
-        Space(),
-        Space(),
-        Space(),
-        Space(),
-        Space(),
-    ]
+    expected = "022111222......"
 
-    layout.compact()
-    assert layout.items == expected
+    layout.compact_block()
+    assert str(layout) == expected
 
-    input = "2333133121414131402"
-    layout = parse(input)
+    layout = parse(input[1])
     expected = "0099811188827773336446555566.............."
 
-    layout.compact()
+    layout.compact_block()
     assert str(layout) == expected
 
 
 def test_part1() -> None:
-    input = "2333133121414131402"
     expected = 1928
 
-    assert part1(input) == expected
+    assert part1(input[1]) == expected
 
 
 def test_find_space() -> None:
-    input = "2333133121414131402"
-    layout = parse(input)
+    layout = parse(input[1])
     expected = 2
 
-    assert layout.find_space(3) == expected
+    assert layout.find_space(2, len(layout.items)) == expected
 
     with pytest.raises(Exception):
-        assert layout.find_space(10) == expected
+        assert layout.find_space(10, len(layout.items)) == expected
 
 
 def test_move_file() -> None:
-    input = "2333133121414131402"
-    layout = parse(input)
+    layout = parse(input[1])
 
-    expected = '0099.111...2...333.44.5555.6666.777.8888..'
+    expected = "0099.111...2...333.44.5555.6666.777.8888.."
 
     layout.move_file(9)
     assert str(layout) == expected
 
-    expected = '0099.1117772...333.44.5555.6666.....8888..'
+    expected = "0099.1117772...333.44.5555.6666.....8888.."
 
     layout.move_file(7)
     assert str(layout) == expected
 
-    expected = '0099.111777244.333....5555.6666.....8888..'
+    expected = "0099.111777244.333....5555.6666.....8888.."
 
     layout.move_file(4)
     assert str(layout) == expected
 
-    expected = '00992111777.44.333....5555.6666.....8888..'
+    expected = "00992111777.44.333....5555.6666.....8888.."
 
     layout.move_file(2)
     assert str(layout) == expected
 
 
-
 def test_part2() -> None:
-    input = "2333133121414131402"
     expected = 2858
 
-    assert part1(input) == expected
+    assert part2(input[1]) == expected
