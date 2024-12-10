@@ -1,5 +1,5 @@
 from functools import reduce
-from math import floor
+from itertools import combinations
 from sys import stdin
 
 
@@ -32,16 +32,13 @@ def check_pair(rules: tuple[tuple[int, int], ...], alpha: int, beta: int) -> boo
 
 def check_pages(rules: tuple[tuple[int, int], ...], pages: tuple[int, ...]) -> bool:
     return all(
-        check_pair(rules, pages[idx], beta)
-        # loop till second last
-        for idx in range(len(pages) - 1)
-        # inner loop from second element
-        for beta in pages[idx + 1 :]
+        check_pair(rules, alpha, beta)
+        for alpha, beta in combinations(pages, 2)
     )
 
 
 def get_middle(pages: tuple[int, ...]) -> int:
-    return pages[floor(len(pages) / 2)]
+    return pages[len(pages) // 2]
 
 
 def move(items: tuple[int, ...], current: int, incoming: int) -> tuple[int, ...]:
