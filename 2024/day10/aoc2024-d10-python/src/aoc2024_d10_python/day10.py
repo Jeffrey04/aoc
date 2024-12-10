@@ -47,25 +47,23 @@ def climb(
 
     result = {}
 
-    try:
-        while current := candidates.pop():
-            while True:
-                if topo_map[current[-1]] == TRAILHEAD_MAX:
-                    result[(current[0], current[-1])] = result.get(
-                        (current[0], current[-1]), ()
-                    ) + (current,)
-                    break
+    while candidates:
+        current = candidates.pop()
+        while True:
+            if topo_map[current[-1]] == TRAILHEAD_MAX:
+                result[(current[0], current[-1])] = result.get(
+                    (current[0], current[-1]), ()
+                ) + (current,)
+                break
 
-                elif steps := next_step(topo_map, *current[-1]):
-                    incoming, *rest = steps
+            elif steps := next_step(topo_map, *current[-1]):
+                incoming, *rest = steps
 
-                    candidates.extend([current + (step,) for step in rest])
+                candidates.extend([current + (step,) for step in rest])
 
-                    current = current + (incoming,)
-                else:
-                    break
-    except IndexError:
-        pass
+                current = current + (incoming,)
+            else:
+                break
 
     return result
 
