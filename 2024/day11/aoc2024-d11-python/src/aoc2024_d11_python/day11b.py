@@ -53,21 +53,6 @@ def stone_multiply(_, stone: int) -> int:
     return stone * 2024
 
 
-def stone_transform(stone: int) -> tuple[int, ...]:
-    result = ()
-
-    if stone == 0:
-        result = stone_increment(stone)
-
-    elif len_digit(stone) % 2 == 0:
-        result = stone_split(stone)
-
-    else:
-        result = stone_multiply(stone)
-
-    return result
-
-
 def blink(
     stones: tuple[int, ...], fsm: Machine, iterations: int = 1
 ) -> Generator[int, None, None]:
