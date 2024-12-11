@@ -115,26 +115,26 @@ wheels = [
 
 [[package]]
 name = "genruler"
-version = "0.1.3"
+version = "0.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "funcparserlib" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cb/39/b504926529ee8e1080adc33ad6042ca2cd3d92231f313cd6996bad295690/genruler-0.1.3.tar.gz", hash = "sha256:7b284db0fa9eeb25d2a3b5b128c80c1f67809bedebff9ee955656157ce7732cd", size = 11488 }
+sdist = { url = "https://files.pythonhosted.org/packages/7d/9a/46ed5ee1967b87c6e6a9d52c7dfa04e97b82c60d50a74dcf41741b24ea1c/genruler-0.2.0.tar.gz", hash = "sha256:6eaf49623bc8c5f00a2c1121caaa964cfd4d4078cf4ae1565893421980a52925", size = 16826 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1f/52/a1bd38a288799c7f290c1d0cb1046e4226a34d505c290ccded928fe650b7/genruler-0.1.3-py3-none-any.whl", hash = "sha256:4f513363ab396b2ba3ba2bb1d1539459d622816d5df6e8e6b5c26478ab41638f", size = 11764 },
+    { url = "https://files.pythonhosted.org/packages/b8/0a/12cb04ffa7140b2bc696e915fff46d93d7636be5cf00f14e4f7d761fda18/genruler-0.2.0-py3-none-any.whl", hash = "sha256:0e5cfbe86b4bbeed918d3d6307d2ce54e0d1d9950ba9c7f9026789ddf8ca1f81", size = 15440 },
 ]
 
 [[package]]
 name = "genstates"
-version = "0.2.0"
+version = "0.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "genruler" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9e/7c/afadf03e8f59746d27c3a86294e950b4b695b9038bcfbf49fd45b1ee43e8/genstates-0.2.0.tar.gz", hash = "sha256:c2a825af1ce4bd679ae9255e647c54bf6c99f5fff0a602e6dfb0f16427b23baa", size = 12403 }
+sdist = { url = "https://files.pythonhosted.org/packages/f8/bd/62090724853b4cbf7c2105e1615383c134526389ba042192dc090ef99d72/genstates-0.2.1.tar.gz", hash = "sha256:b35adfb7b3d0ed4338104569975066e9ee40a0635822e2515144fef2e075d2b4", size = 13155 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/31/09/5de4ba022a7dda7f44e2b5e90ec118e0efba9e9107ae1d0fe73a13e1dbc3/genstates-0.2.0-py3-none-any.whl", hash = "sha256:ab651f98139f077828ac53d6f7ffc052e653348fbefefb98a80cfc80016c688d", size = 10277 },
+    { url = "https://files.pythonhosted.org/packages/be/6b/8984df4251e19336804050548f9daf6068e95643d32051cf204600b61e4a/genstates-0.2.1-py3-none-any.whl", hash = "sha256:6cf0602b08061b3fc27fa405fccc2f5bc479604457effd0b974cb4789e9fa943", size = 10701 },
 ]
 
 [[package]]
