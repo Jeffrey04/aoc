@@ -1,4 +1,3 @@
-from functools import reduce
 from itertools import chain, repeat
 from math import floor, log10
 from sys import stdin

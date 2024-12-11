@@ -6,8 +6,9 @@ readme = "README.md"
 authors = [
     { name = "Jeffrey04", email = "mycyberpet@yahoo.com" }
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
+    "genstates>=0.2.0",
     "toolz>=1.0.0",
 ]
 
