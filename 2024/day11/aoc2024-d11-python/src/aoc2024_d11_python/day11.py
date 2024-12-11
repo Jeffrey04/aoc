@@ -55,13 +55,15 @@ def stone_transform(stone: int) -> tuple[int, ...]:
 
 
 def blink(stones: tuple[int, ...], iterations: int = 1) -> Generator[int, None, None]:
-    return reduce(
-        lambda current, _: chain.from_iterable(
-            stone_transform(stone) for stone in current
+    return pipe(
+        stones,
+        *repeat(
+            lambda current: chain.from_iterable(
+                stone_transform(stone) for stone in current
+            ),
+            iterations,
         ),
-        range(iterations),
-        stones,  # type: ignore
-    )
+    )  # type: ignore
 
 
 def blink_to_count(stones: tuple[int, ...], iterations: int = 1) -> int:
