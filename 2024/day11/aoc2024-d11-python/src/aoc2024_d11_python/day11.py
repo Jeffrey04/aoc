@@ -78,11 +78,8 @@ def blink_get_index(current: dict[int, int]) -> dict[int, int]:
         sum,
         *(
             {stone: count_current}
-            for stone, count_current in (
-                (stone, count_current)
-                for stone_current, count_current in current.items()
-                for stone in stone_transform(stone_current)
-            )
+            for stone_current, count_current in current.items()
+            for stone in stone_transform(stone_current)
         ),
     )
 
