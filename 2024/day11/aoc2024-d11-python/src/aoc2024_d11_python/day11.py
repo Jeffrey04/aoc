@@ -64,7 +64,7 @@ def blink(stones: tuple[int, ...], iterations: int = 1) -> Generator[int, None, 
     )
 
 
-def blink_for_count(stones: tuple[int, ...], iterations: int = 1) -> int:
+def blink_to_count(stones: tuple[int, ...], iterations: int = 1) -> int:
     return sum(
         pipe(
             {stone: 1 for stone in stones},
@@ -93,7 +93,7 @@ def part1(input: str) -> int:
 
 
 def part2(input: str) -> int:
-    return blink_for_count(parse(input), 75)
+    return blink_to_count(parse(input), 75)
 
 
 def main() -> None:

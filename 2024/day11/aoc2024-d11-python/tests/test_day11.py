@@ -2,7 +2,7 @@ import pytest
 
 from aoc2024_d11_python.day11 import (
     blink,
-    blink_for_count,
+    blink_to_count,
     part1,
     stone_increment,
     stone_multiply,
@@ -95,7 +95,7 @@ def test_blink_for_count():
     input = (125, 17)
     expected = 55312
 
-    assert blink_for_count(input, 25) == expected
+    assert blink_to_count(input, 25) == expected
 
 
 def test_part1() -> None:
