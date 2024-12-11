@@ -1,5 +1,5 @@
 from functools import reduce
-from itertools import chain
+from itertools import chain, repeat
 from math import floor, log10
 from sys import stdin
 from typing import Any, Callable, Generator
@@ -68,7 +68,7 @@ def blink_for_count(stones: tuple[int, ...], iterations: int = 1) -> int:
     return sum(
         pipe(
             {stone: 1 for stone in stones},
-            *((blink_get_index,) * iterations),
+            *repeat(blink_get_index, iterations),
         ).values()
     )
 
