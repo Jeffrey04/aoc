@@ -2,8 +2,7 @@ from collections.abc import Generator
 from dataclasses import dataclass
 from sys import stdin
 
-import dask.bag as db
-
+DIRECTION_DEFAULT = (0, -1)
 SYMBOL_GUARD = "^"
 SYMBOL_OBSTRUCTION = "#"
 
@@ -14,57 +13,51 @@ ROTATE_RIGHT = {
     (1, 1): 0,
 }
 
-
-@dataclass
-class Guard:
-    position: tuple[int, int]
-    direction = (0, -1)
-
-    def rotate(self, direction: dict[tuple[int, int], int]) -> None:
-        self.direction = (
-            self.direction[0] * ROTATE_RIGHT[(0, 0)]
-            + self.direction[1] * ROTATE_RIGHT[(1, 0)],
-            self.direction[0] * ROTATE_RIGHT[(0, 1)]
-            + self.direction[1] * ROTATE_RIGHT[(1, 1)],
-        )
-
-    def forward(self) -> tuple[int, int]:
-        return (
-            self.position[0] + self.direction[0],
-            self.position[1] + self.direction[1],
-        )
+def check_is_in_board(dimension: tuple[int, int], x: int, y: int) -> bool:
+    return not (x < 0 or y < 0 or x >= dimension[0] or y >= dimension[1])
 
 
-@dataclass
-class Board:
-    obstruction: tuple[tuple[int, int], ...]
-    guard: Guard
-    dimension: tuple[int, int]
-    rotation: dict[tuple[int, int], int]
+def check_is_passable(
+    obstructions: dict[tuple[int, int], bool], x: int, y: int
+) -> bool:
+    return obstructions.get((x, y), False) is False
 
-    def add_obstacle(self, point: tuple[int, int]) -> None:
-        self.obstruction = self.obstruction + (point,)
 
-    def check_is_in_board(self, x: int, y: int) -> bool:
-        return not (x < 0 or y < 0 or x >= self.dimension[0] or y >= self.dimension[1])
+def guard_forward(
+    guard: tuple[int, int], direction: tuple[int, int]
+) -> tuple[int, int]:
+    return (
+        guard[0] + direction[0],
+        guard[1] + direction[1],
+    )
 
-    def check_is_obstruction(self, x: int, y: int) -> bool:
-        return (x, y) in self.obstruction
 
-    def check_guard_can_move(self) -> bool:
-        return not self.check_is_obstruction(*self.guard.forward())
+def guard_rotate(
+    direction: tuple[int, int], rotation: dict[tuple[int, int], int]
+) -> tuple[int, int]:
+    return (
+        direction[0] * ROTATE_RIGHT[(0, 0)] + direction[1] * ROTATE_RIGHT[(1, 0)],
+        direction[0] * ROTATE_RIGHT[(0, 1)] + direction[1] * ROTATE_RIGHT[(1, 1)],
+    )
 
-    def move_guard(self) -> tuple[int, int]:
-        destination = self.guard.forward()
 
-        match self.check_guard_can_move():
-            case True:
-                self.guard.position = destination
+def guard_move(
+    guard: tuple[int, int],
+    obstructions: dict[tuple[int, int], bool],
+    direction: tuple[int, int],
+    rotation: dict[tuple[int, int], int],
+) -> tuple[tuple[int, int], tuple[int, int]]:
+    result = ()
+    destination = guard_forward(guard, direction)
 
-            case False:
-                self.guard.rotate(self.rotation)
+    match check_is_passable(obstructions, *destination):
+        case True:
+            result = direction, destination
 
-        return self.guard.position
+        case False:
+            result = guard_rotate(direction, rotation), guard
+
+    return result
 
 
 def finder(
@@ -78,71 +71,94 @@ def finder(
     )
 
 
-def parse(input: str) -> Board:
+def parse(
+    input: str,
+) -> tuple[
+    dict[tuple[int, int], bool],
+    tuple[int, int],
+    tuple[int, int],
+]:
     board = tuple(input.strip().splitlines())
-    position = next(finder(board, SYMBOL_GUARD))
 
-    return Board(
-        tuple(finder(board, SYMBOL_OBSTRUCTION)),
-        Guard(position),
-        ((len(board[0]), len(board))),
-        ROTATE_RIGHT,
+    return (
+        {point: True for point in finder(board, SYMBOL_OBSTRUCTION)},
+        next(finder(board, SYMBOL_GUARD)),
+        (len(board[0]), len(board)),
     )
+
+
+def get_visited_tiles(
+    obstructions: dict[tuple[int, int], bool],
+    guard: tuple[int, int],
+    dimension: tuple[int, int],
+    direction: tuple[int, int] = DIRECTION_DEFAULT,
+    rotation: dict[tuple[int, int], int] = ROTATE_RIGHT,
+) -> dict[tuple[int, int], bool]:
+    tiles = {guard: True}
+
+    while check_is_in_board(dimension, *guard):
+        direction, guard = guard_move(guard, obstructions, direction, rotation)
+
+        tiles[guard] = True
+
+    # last tile is outside of the board
+    del tiles[guard]
+
+    return tiles  # type: ignore
 
 
 def part1(input: str) -> int:
-    board = parse(input)
-    unique_steps = {board.guard.position}
-
-    while board.check_is_in_board(*board.guard.position):
-        unique_steps.add(board.move_guard())
-
-    # last step is outside of the board
-    return len(unique_steps) - 1
+    return len(get_visited_tiles(*parse(input)))
 
 
 def part2(input: str) -> int:
-    board = parse(input)
-    initial, steps = board.guard.position, []
+    obstructions, guard, dimension = parse(input)
 
-    while board.check_is_in_board(*board.guard.position):
-        step = (board.guard.position, board.move_guard())
+    tiles = get_visited_tiles(obstructions, guard, dimension)
+    del tiles[guard]
 
-        if step[0] != step[1]:
-            steps.append(step)
-
-    return (
-        db.from_sequence(  # type: ignore
-            # condition 1: point must be a original visited point
-            set((point, input) for _, point in steps[:-1] if point != initial),
-            5,
+    return len(
+        tuple(
+            None
+            for tile in tiles
+            if check_is_loopable(
+                tile,
+                dict(obstructions, tile=True),  # type: ignore
+                guard,
+                dimension,
+            )
         )
-        .starmap(check_is_loopable)
-        .filter(None)
-        .count()
-        .compute()
     )
 
 
-def check_is_loopable(point: tuple[int, int], input: str) -> bool:
+def check_is_loopable(
+    point: tuple[int, int],
+    obstructions: dict[tuple[int, int], bool],
+    guard,
+    dimension,
+    direction=DIRECTION_DEFAULT,
+    rotation=ROTATE_RIGHT,
+) -> bool:
     result = False
 
-    board = parse(input)
-    board.add_obstacle(point)
+    obstructions[point] = True
 
-    steps = []
+    steps = dict()
 
-    while board.check_is_in_board(*board.guard.position):
-        step = (board.guard.position, board.move_guard())
+    while check_is_in_board(dimension, *guard):
+        direction, guard_new = guard_move(guard, obstructions, direction, rotation)
+
+        step = (guard, guard_new)
+        guard = guard_new
 
         if step[0] == step[1]:
             continue
-        elif step in steps:
+        elif steps.get(step, False):
             # condition 2: if current step was attempted, it is a loop
             result = True
             break
 
-        steps.append(step)
+        steps[step] = True
 
     return result
 
