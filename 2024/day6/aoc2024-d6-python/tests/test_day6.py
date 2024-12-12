@@ -121,14 +121,14 @@ def test_check_is_passable() -> None:
 
 def test_move_guard() -> None:
     guard = (0, 1)
-    passable_check = lambda x, y: check_is_passable({(0, 0): True}, x, y)  # noqa: E731
+    obstructions = {(0, 0): True}
     direction = DIRECTION_DEFAULT
 
-    direction, guard = guard_move(guard, direction, ROTATE_RIGHT, passable_check)
+    direction, guard = guard_move(obstructions, guard, direction, ROTATE_RIGHT)
     assert direction == (1, 0)
     assert guard == (0, 1)
 
-    direction, guard = guard_move(guard, direction, ROTATE_RIGHT, passable_check)
+    direction, guard = guard_move(obstructions, guard, direction, ROTATE_RIGHT)
     assert direction == (1, 0)
     assert guard == (1, 1)
 

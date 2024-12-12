@@ -1,7 +1,5 @@
 from collections.abc import Generator
-from functools import partial
 from sys import stdin
-from typing import Callable
 
 DIRECTION_DEFAULT = (0, -1)
 SYMBOL_GUARD = "^"
@@ -53,15 +51,35 @@ def guard_rotate(
 
 
 def guard_move(
+    obstructions: dict[tuple[int, int], bool],
     guard: tuple[int, int],
     direction: tuple[int, int],
     rotation: dict[tuple[int, int], int],
-    passable_check: Callable[[int, int], bool],
 ) -> tuple[tuple[int, int], tuple[int, int]]:
     result = ()
     destination = guard_forward(guard, direction)
 
-    match passable_check(*destination):
+    match check_is_passable(obstructions, *destination):
+        case True:
+            result = direction, destination
+
+        case False:
+            result = guard_rotate(direction, rotation), guard
+
+    return result
+
+
+def guard_move_with_new_obstacle(
+    obstructions: dict[tuple[int, int], bool],
+    new_obstacle: tuple[int, int],
+    guard: tuple[int, int],
+    direction: tuple[int, int],
+    rotation: dict[tuple[int, int], int],
+) -> tuple[tuple[int, int], tuple[int, int]]:
+    result = ()
+    destination = guard_forward(guard, direction)
+
+    match check_is_passable_with_new_object(obstructions, new_obstacle, *destination):
         case True:
             result = direction, destination
 
@@ -99,16 +117,16 @@ def parse(
 
 
 def get_visited_tiles(
+    obstructions: dict[tuple[int, int], bool],
     guard: tuple[int, int],
     dimension: tuple[int, int],
-    passable_check: Callable[[int, int], bool],
     direction: tuple[int, int] = DIRECTION_DEFAULT,
     rotation: dict[tuple[int, int], int] = ROTATE_RIGHT,
 ) -> dict[tuple[int, int], bool]:
     tiles = {guard: True}
 
     while check_is_in_board(dimension, *guard):
-        direction, guard = guard_move(guard, direction, rotation, passable_check)
+        direction, guard = guard_move(obstructions, guard, direction, rotation)
 
         tiles[guard] = True
 
@@ -119,40 +137,32 @@ def get_visited_tiles(
 
 
 def part1(input: str) -> int:
-    obstructions, guard, dimension = parse(input)
-
-    return len(
-        get_visited_tiles(
-            guard, dimension, passable_check=partial(check_is_passable, obstructions)
-        )
-    )
+    return len(get_visited_tiles(*parse(input)))
 
 
 def part2(input: str) -> int:
-    obstructions, guard, dimension = parse(input)
+    board = parse(input)
 
-    tiles = get_visited_tiles(
-        guard, dimension, passable_check=partial(check_is_passable, obstructions)
-    )
-    del tiles[guard]
+    tiles = get_visited_tiles(*board)
+    del tiles[board[1]]
 
     return len(
         tuple(
             None
             for tile in tiles
             if check_is_loopable(
-                guard,
-                dimension,
-                partial(check_is_passable_with_new_object, obstructions, tile),
+                *board,
+                new_obstacle=tile,
             )
         )
     )
 
 
 def check_is_loopable(
+    obstructions: dict[tuple[int, int], bool],
     guard: tuple[int, int],
     dimension: tuple[int, int],
-    passable_check: Callable[[int, int], bool],
+    new_obstacle: tuple[int, int],
     direction=DIRECTION_DEFAULT,
     rotation=ROTATE_RIGHT,
 ) -> bool:
@@ -161,7 +171,13 @@ def check_is_loopable(
     steps = dict()
 
     while check_is_in_board(dimension, *guard):
-        direction, guard_new = guard_move(guard, direction, rotation, passable_check)
+        direction, guard_new = guard_move_with_new_obstacle(
+            obstructions,
+            new_obstacle,
+            guard,
+            direction,
+            rotation,
+        )
 
         step = (guard, guard_new)
         guard = guard_new
