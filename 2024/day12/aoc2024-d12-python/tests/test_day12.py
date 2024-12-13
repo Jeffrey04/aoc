@@ -1,12 +1,10 @@
 import pytest
 
 from aoc2024_d12_python.day12 import (
-    Direction,
     Plant,
     cluster_build,
-    cluster_get_neighbour_diff,
+    cluster_get_neighbours_diff,
     cluster_get_neighbours_same,
-    direction_merge_fences,
     parse,
     part1,
     part2,
@@ -97,19 +95,14 @@ def test_cluster_get_neighbours_diff() -> None:
         (3, 3): Plant("C", (3, 3)),
     }
     input = (garden[(0, 0)],)
-    expected = (garden[(0, 1)],)
-
-    assert cluster_get_neighbour_diff(garden, input) == expected
-
-
-def test_plant_merge_fence() -> None:
-    input = (Direction.RIGHT, (True,) * 4, (True,) * 4)
     expected = (
-        (False, True, True, True),
-        (True, True, False, True),
+        (garden[(0, 0)], None),
+        (garden[(0, 0)], garden[(0, 1)]),
+        (garden[(0, 0)], None),
     )
 
-    assert direction_merge_fences(*input) == expected  # type: ignore
+    print(cluster_get_neighbours_diff(garden, input))
+    assert cluster_get_neighbours_diff(garden, input) == expected
 
 
 def test_cluster_build() -> None:
@@ -132,41 +125,21 @@ def test_cluster_build() -> None:
         (3, 3): Plant("C", (3, 3)),
     }
 
-    cluster_expected = {
-        1: (garden[(0, 0)], garden[(1, 0)], garden[(2, 0)], garden[(3, 0)]),
-        2: (garden[(3, 1)],),
-        3: (garden[(2, 1)], garden[(2, 2)], garden[(3, 2)], garden[(3, 3)]),
-        4: (garden[(2, 3)], garden[(1, 3)], garden[(0, 3)]),
-        5: (garden[(0, 2)], garden[(0, 1)], garden[(1, 2)], garden[(1, 1)]),
-    }
-    fences_expected = {
-        # A
-        (0, 0): (False, True, True, True),
-        (1, 0): (False, True, False, True),
-        (2, 0): (False, True, False, True),
-        (3, 0): (True, True, False, True),
-        # B
-        (0, 1): (False, False, True, True),
-        (1, 1): (True, False, False, True),
-        (0, 2): (False, True, True, False),
-        (1, 2): (True, True, False, False),
-        # D
-        (3, 1): (True, True, True, True),
-        # C
-        (2, 1): (True, False, True, True),
-        (2, 2): (False, True, True, False),
-        (3, 2): (True, False, False, True),
-        (3, 3): (True, True, True, False),
-        # E
-        (0, 3): (False, True, True, True),
-        (1, 3): (False, True, False, True),
-        (2, 3): (True, True, False, True),
-    }
+    cluster_expected = (
+        (garden[(0, 0)], garden[(1, 0)], garden[(2, 0)], garden[(3, 0)]),
+        (garden[(3, 1)],),
+        (garden[(2, 1)], garden[(2, 2)], garden[(3, 2)], garden[(3, 3)]),
+        (garden[(1, 2)], garden[(1, 1)], garden[(0, 2)], garden[(0, 1)]),
+        (garden[(0, 3)], garden[(1, 3)], garden[(2, 3)]),
+    )
+    fences_expected = (10, 4, 10, 8, 8)
+    sides_expected = (4, 4, 8, 4, 4)
 
-    cluster_result, cluster_sides, fences_result = cluster_build(garden)
+    cluster_result, fences_result, sides_result = cluster_build(garden)
 
     assert cluster_result == cluster_expected
     assert fences_result == fences_expected
+    assert sides_result == sides_expected
 
 
 def test_part1() -> None:
@@ -269,4 +242,4 @@ MMMISSJEEE
 
     expected = 1206
 
-    assert part1(input) == expected
+    assert part2(input) == expected
