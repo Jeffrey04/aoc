@@ -1,6 +1,4 @@
-import pytest
-
-from aoc2024_d13_python.day13 import A, B, find, find2, move, parse, part1, part2
+from aoc2024_d13_python.day13 import find, parse, part1
 
 input = """
 Button A: X+94, Y+34
@@ -23,35 +21,20 @@ Prize: X=18641, Y=10279
 
 def test_parse() -> None:
     expected = (
-        ({(94, 34): ("A", 3), (22, 67): ("B", 1)}, (8400, 5400)),
-        ({(26, 66): ("A", 3), (67, 21): ("B", 1)}, (12748, 12176)),
-        ({(17, 86): ("A", 3), (84, 37): ("B", 1)}, (7870, 6450)),
-        ({(69, 23): ("A", 3), (27, 71): ("B", 1)}, (18641, 10279)),
+        ({(94, 34): 3, (22, 67): 1}, (8400, 5400)),
+        ({(26, 66): 3, (67, 21): 1}, (12748, 12176)),
+        ({(17, 86): 3, (84, 37): 1}, (7870, 6450)),
+        ({(69, 23): 3, (27, 71): 1}, (18641, 10279)),
     )
 
     assert parse(input) == expected
 
 
-def test_move() -> None:
-    input = ((0, 0), (94, 34))
-    expected = (94, 34)
-
-    assert move(*input) == expected
-
-
-@pytest.mark.skip()
 def test_find() -> None:
-    input = ({(94, 34): ("A", 3), (22, 67): ("B", 1)}, (8400, 5400))
-    result = find(*input)
-
-    assert 208 in result
-
-
-def test_find2() -> None:
-    input = ({(94, 34): ("A", 3), (22, 67): ("B", 1)}, (8400, 5400))
+    input = ({(94, 34): 3, (22, 67): 1}, (8400, 5400))
     result = {(94, 34): 80, (22, 67): 40}
 
-    assert find2(*input) == result
+    assert find(*input) == result
 
 
 def test_part1() -> None:
