@@ -1,5 +1,8 @@
 from collections.abc import Generator
+from functools import partial
 from sys import stdin
+
+import dask.bag as db
 
 DIRECTION_DEFAULT = (0, -1)
 SYMBOL_GUARD = "^"
@@ -151,18 +154,18 @@ def part2(input: str) -> int:
             None
             for tile in tiles
             if check_is_loopable(
+                tile,
                 *board,
-                new_obstacle=tile,
             )
         )
     )
 
 
 def check_is_loopable(
+    new_obstacle: tuple[int, int],
     obstructions: dict[tuple[int, int], bool],
     guard: tuple[int, int],
     dimension: tuple[int, int],
-    new_obstacle: tuple[int, int],
     direction=DIRECTION_DEFAULT,
     rotation=ROTATE_RIGHT,
 ) -> bool:
