@@ -182,9 +182,13 @@ def part2(input: str) -> int:
 
     return len(
         tuple(
-            None
-            for tile in tiles
-            if check_is_loopable(tile, board, guard, RotateRight())
+            filter(
+                None,
+                (
+                    check_is_loopable(tile, board, guard, RotateRight())
+                    for tile in tiles
+                ),
+            )
         )
     )
 
