@@ -306,15 +306,12 @@ def part1(input: str) -> int:
 
 
 def part2(input: str) -> int:
-    results = tuple(find_djikstra(*parse(input)))
-
     return len(
         set(
             item
-            for cost, trails in results
-            for trail in trails
+            for trail in next(find_djikstra(*parse(input)))[-1]
             for item in trail.keys()
-            if (cost == min(score for score, _ in results)) and isinstance(item, Point)
+            if isinstance(item, Point)
         )
     )
 
