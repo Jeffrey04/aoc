@@ -1,8 +1,5 @@
 from collections.abc import Generator
-from functools import partial
 from sys import stdin
-
-import dask.bag as db
 
 DIRECTION_DEFAULT = (0, -1)
 SYMBOL_GUARD = "^"
@@ -10,8 +7,8 @@ SYMBOL_OBSTRUCTION = "#"
 
 ROTATE_RIGHT = {
     (0, 0): 0,
-    (0, 1): 1,
-    (1, 0): -1,
+    (0, 1): -1,
+    (1, 0): 1,
     (1, 1): 0,
 }
 
@@ -48,8 +45,8 @@ def guard_rotate(
     direction: tuple[int, int], rotation: dict[tuple[int, int], int]
 ) -> tuple[int, int]:
     return (
-        direction[0] * ROTATE_RIGHT[(0, 0)] + direction[1] * ROTATE_RIGHT[(1, 0)],
-        direction[0] * ROTATE_RIGHT[(0, 1)] + direction[1] * ROTATE_RIGHT[(1, 1)],
+        direction[0] * ROTATE_RIGHT[(0, 0)] + direction[1] * ROTATE_RIGHT[(0, 1)],
+        direction[0] * ROTATE_RIGHT[(1, 0)] + direction[1] * ROTATE_RIGHT[(1, 1)],
     )
 
 
