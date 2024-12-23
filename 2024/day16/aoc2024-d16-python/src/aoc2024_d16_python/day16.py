@@ -7,10 +7,7 @@ from math import inf
 from operator import attrgetter
 from sys import stdin
 
-import structlog
 from cytoolz.dicttoolz import merge, merge_with
-
-logger = structlog.get_logger()
 
 type Trail = dict[Point | Rotation, int]
 
@@ -133,7 +130,7 @@ def check_is_not_hitting_wall(maze: Maze, point: Point) -> bool:
 
 def check_can_progress(
     maze: Maze,
-    visited: dict[Point, int],
+    visited: dict[tuple[Direction, Point], int],
     unvisited: dict[tuple[Direction, Point], int],
     direction: Direction,
     point: Point,
@@ -141,21 +138,24 @@ def check_can_progress(
 ) -> bool:
     return (
         check_is_not_hitting_wall(maze, point)
-        and point not in visited
-        and unvisited.get((direction, point), inf) > cost
+        and (direction, point) not in visited
+        and unvisited.get((direction, point), inf) >= cost
     )
 
 
 def distance_to_end(maze: Maze, point: Point) -> int:
+    # manhattan distance
     return abs(maze.end.x - point.x) + abs(maze.end.y - point.y)
+    # euclidean distance
+    # return (maze.end.x - point.x) ** 2 + (maze.end.y - point.y) ** 2
 
 
 def find_astar(
     maze: Maze, reindeer: Point, direction_default: Direction = DIRECTION_START
-) -> tuple[int, Trail]:
+) -> Generator[tuple[int, Trail], None, None]:
     # https://www.datacamp.com/tutorial/a-star-algorithm
-    open_list: dict[Point, Node] = {
-        reindeer: Node(
+    open_list: dict[tuple[Direction, Point], Node] = {
+        (direction_default, reindeer): Node(
             direction_default,
             reindeer,
             0,
@@ -163,23 +163,23 @@ def find_astar(
             {reindeer: 1},
         )
     }
-    closed_list: dict[Point, Node] = {}
-    result = inf, {}
+    closed_list: dict[tuple[Direction, Point], Node] = {}
 
     while True:
-        current = next(
-            node
-            for _, node in open_list.items()
-            if node.f == min(map(attrgetter("f"), open_list.values()))
-        )
-
-        if current.point == maze.end:
-            print(current.point)
-            result = current.g, current.trail
+        try:
+            current = next(
+                node
+                for _, node in open_list.items()
+                if node.f == min(map(attrgetter("f"), open_list.values()))
+            )
+        except StopIteration:
             break
 
-        del open_list[current.point]
-        closed_list[current.point] = current
+        if current.point == maze.end:
+            yield current.g, current.trail
+
+        del open_list[(current.direction, current.point)]
+        closed_list[(current.direction, current.point)] = current
 
         # case forward
         point_incoming = current.point + current.direction
@@ -187,13 +187,13 @@ def find_astar(
 
         if (
             check_is_not_hitting_wall(maze, point_incoming)
-            and point_incoming not in closed_list
+            and (current.direction, point_incoming) not in closed_list
             and (
-                point_incoming not in open_list
-                or cost_incoming < open_list[point_incoming].g
+                (current.direction, point_incoming) not in open_list
+                or cost_incoming < open_list[(current.direction, point_incoming)].g
             )
         ):
-            open_list[point_incoming] = Node(
+            open_list[(current.direction, point_incoming)] = Node(
                 current.direction,
                 point_incoming,
                 cost_incoming,
@@ -209,13 +209,13 @@ def find_astar(
 
             if (
                 check_is_not_hitting_wall(maze, point_incoming)
-                and point_incoming not in closed_list
+                and (direction_rotated, point_incoming) not in closed_list
                 and (
-                    point_incoming not in open_list
-                    or cost_incoming < open_list[point_incoming].g
+                    (direction_rotated, point_incoming) not in open_list
+                    or cost_incoming < open_list[(direction_rotated, point_incoming)].g
                 )
             ):
-                open_list[point_incoming] = Node(
+                open_list[(direction_rotated, point_incoming)] = Node(
                     direction_rotated,
                     point_incoming,
                     cost_incoming,
@@ -223,31 +223,30 @@ def find_astar(
                     merge_with(sum, current.trail, {rotation: 1, point_incoming: 1}),
                 )
 
-    return result
-
 
 def find_djikstra(
     maze: Maze, reindeer: Point, direction_default: Direction = DIRECTION_START
-) -> tuple[int, Trail]:
+) -> Generator[tuple[int, list[Trail]], None, None]:
     # https://www.geeksforgeeks.org/dijkstras-shortest-path-algorithm-greedy-algo-7/
     unvisited: dict[tuple[Direction, Point], int] = {(direction_default, reindeer): 0}
-    visited: dict[Point, int] = {}
-    point_trail: dict[Point, Trail] = {reindeer: {reindeer: 1}}
-    result = inf, {}
+    visited: dict[tuple[Direction, Point], int] = {}
+    point_trail: dict[tuple[Point, int], list[Trail]] = {(reindeer, 0): [{reindeer: 1}]}
 
     while True:
-        direction_current, point_current, cost_current = next(
-            (direction, point, value)
-            for (direction, point), value in unvisited.items()
-            if value == min(unvisited.values())
-        )
+        try:
+            direction_current, point_current, cost_current = next(
+                (direction, point, value)
+                for (direction, point), value in unvisited.items()
+                if value == min(unvisited.values())
+            )
+        except StopIteration:
+            break
 
         if point_current == maze.end:
-            result = (
+            yield (
                 unvisited[(direction_current, point_current)],
-                point_trail[point_current],
+                point_trail[(point_current, cost_current)],
             )
-            break
 
         point_incoming = point_current + direction_current
         cost_incoming = cost_current + COST_FORWARD
@@ -258,8 +257,14 @@ def find_djikstra(
         ):
             unvisited[(direction_current, point_incoming)] = cost_incoming
 
-            point_trail[point_incoming] = merge(
-                point_trail.get(point_current, {}), {point_incoming: 1}
+            point_trail[(point_incoming, cost_incoming)] = point_trail.get(
+                (point_incoming, cost_incoming), []
+            )
+            point_trail[(point_incoming, cost_incoming)].extend(
+                [
+                    merge(trail, {point_incoming: 1})
+                    for trail in point_trail.get((point_current, cost_current), [])
+                ]
             )
 
         # update rotate
@@ -278,23 +283,40 @@ def find_djikstra(
             ):
                 unvisited[(direction_rotated, point_incoming)] = cost_incoming
 
-                point_trail[point_incoming] = merge_with(
-                    sum,
-                    point_trail.get(point_current, {}),
-                    {point_incoming: 1, rotation: 1},
+                point_trail[(point_incoming, cost_incoming)] = point_trail.get(
+                    (point_incoming, cost_incoming), []
+                )
+                point_trail[(point_incoming, cost_incoming)].extend(
+                    [
+                        merge_with(
+                            sum,
+                            trail,
+                            {point_incoming: 1, rotation: 1},
+                        )
+                        for trail in point_trail.get((point_current, cost_current), [])
+                    ]
                 )
 
-        visited[point_current] = cost_current
+        visited[(direction_current, point_current)] = cost_current
         del unvisited[(direction_current, point_current)]
-
-    return result
 
 
 def part1(input: str) -> int:
-    maze, reindeer = parse(input)
+    return next(find_astar(*parse(input)))[0]
 
-    return find_astar(maze, reindeer)[0]
 
+def part2(input: str) -> int:
+    results = tuple(find_djikstra(*parse(input)))
+
+    return len(
+        set(
+            item
+            for cost, trails in results
+            for trail in trails
+            for item in trail.keys()
+            if (cost == min(score for score, _ in results)) and isinstance(item, Point)
+        )
+    )
 
 def visualize(maze: Maze, trail: Trail) -> str:
     return "\n".join(
@@ -329,7 +351,7 @@ def visualize_tile(maze: Maze, point: Point, trail: Trail) -> str:
 def main() -> None:
     input = stdin.read()
 
-    print("PYTHON:", part1(input))
+    print("PYTHON:", part1(input), part2(input))
 
 
 if __name__ == "__main__":

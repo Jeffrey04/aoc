@@ -1,4 +1,4 @@
-from aoc2024_d16_python.day16 import Maze, Point, Wall, parse, part1
+from aoc2024_d16_python.day16 import Maze, Point, Wall, parse, part1, part2
 
 input1 = """
 ###############
@@ -199,6 +199,16 @@ def test_part1() -> None:
     expected = 11048
 
     assert part1(input2) == expected
+
+
+def test_part2() -> None:
+    expected = 45
+
+    assert part2(input1) == expected
+
+    expected = 64
+
+    assert part2(input2) == expected
 
 
 def test_part1_reddit() -> None:
