@@ -1,19 +1,21 @@
 from __future__ import annotations
 
-import operator
 from collections.abc import Generator
-from ctypes.wintypes import POINT
 from dataclasses import dataclass
 from enum import Enum
-from functools import reduce
+from math import inf
+from operator import attrgetter
 from sys import stdin
 
 import structlog
-from cytoolz.dicttoolz import dissoc, merge, merge_with
+from cytoolz.dicttoolz import merge, merge_with
 
 logger = structlog.get_logger()
 
 type Trail = dict[Point | Rotation, int]
+
+COST_FORWARD = 1
+COST_ROTATE = 1000
 
 
 @dataclass(frozen=True)
@@ -87,6 +89,19 @@ class Maze:
     height: int
 
 
+@dataclass
+class Node:
+    direction: Direction
+    point: Point
+    g: int
+    h: int
+    trail: Trail
+
+    @property
+    def f(self) -> int:
+        return self.g + self.h
+
+
 DIRECTION_START = Direction(1, 0)
 
 
@@ -116,23 +131,109 @@ def check_is_not_hitting_wall(maze: Maze, point: Point) -> bool:
     return not isinstance(maze.tiles.get(point, Space()), Wall)
 
 
-def check_can_progress(maze: Maze, trail: Trail, point: Point) -> bool:
-    return check_is_not_hitting_wall(maze, point) and point not in trail
+def check_can_progress(
+    maze: Maze,
+    visited: dict[Point, int],
+    unvisited: dict[tuple[Direction, Point], int],
+    direction: Direction,
+    point: Point,
+    cost: int,
+) -> bool:
+    return (
+        check_is_not_hitting_wall(maze, point)
+        and point not in visited
+        and unvisited.get((direction, point), inf) > cost
+    )
 
 
-def rotate(direction: Direction, rotation: Rotation) -> Direction:
-    return direction * rotation
+def distance_to_end(maze: Maze, point: Point) -> int:
+    return abs(maze.end.x - point.x) + abs(maze.end.y - point.y)
+
+
+def find_astar(
+    maze: Maze, reindeer: Point, direction_default: Direction = DIRECTION_START
+) -> tuple[int, Trail]:
+    # https://www.datacamp.com/tutorial/a-star-algorithm
+    open_list: dict[Point, Node] = {
+        reindeer: Node(
+            direction_default,
+            reindeer,
+            0,
+            distance_to_end(maze, reindeer),
+            {reindeer: 1},
+        )
+    }
+    closed_list: dict[Point, Node] = {}
+    result = inf, {}
+
+    while True:
+        current = next(
+            node
+            for _, node in open_list.items()
+            if node.f == min(map(attrgetter("f"), open_list.values()))
+        )
+
+        if current.point == maze.end:
+            print(current.point)
+            result = current.g, current.trail
+            break
+
+        del open_list[current.point]
+        closed_list[current.point] = current
+
+        # case forward
+        point_incoming = current.point + current.direction
+        cost_incoming = current.g + COST_FORWARD
+
+        if (
+            check_is_not_hitting_wall(maze, point_incoming)
+            and point_incoming not in closed_list
+            and (
+                point_incoming not in open_list
+                or cost_incoming < open_list[point_incoming].g
+            )
+        ):
+            open_list[point_incoming] = Node(
+                current.direction,
+                point_incoming,
+                cost_incoming,
+                distance_to_end(maze, point_incoming),
+                merge(current.trail, {point_incoming: 1}),
+            )
+
+        # case rotate
+        for rotation in (RotateLeft(), RotateRight()):
+            direction_rotated = current.direction * rotation
+            point_incoming = current.point + direction_rotated
+            cost_incoming = current.g + COST_FORWARD + COST_ROTATE
+
+            if (
+                check_is_not_hitting_wall(maze, point_incoming)
+                and point_incoming not in closed_list
+                and (
+                    point_incoming not in open_list
+                    or cost_incoming < open_list[point_incoming].g
+                )
+            ):
+                open_list[point_incoming] = Node(
+                    direction_rotated,
+                    point_incoming,
+                    cost_incoming,
+                    distance_to_end(maze, point_incoming),
+                    merge_with(sum, current.trail, {rotation: 1, point_incoming: 1}),
+                )
+
+    return result
 
 
 def find_djikstra(
     maze: Maze, reindeer: Point, direction_default: Direction = DIRECTION_START
-) -> tuple[Trail, ...]:
+) -> tuple[int, Trail]:
+    # https://www.geeksforgeeks.org/dijkstras-shortest-path-algorithm-greedy-algo-7/
     unvisited: dict[tuple[Direction, Point], int] = {(direction_default, reindeer): 0}
     visited: dict[Point, int] = {}
-    point_trail: dict[tuple[Point, int], tuple[Trail, ...]] = {
-        (reindeer, 0): ({reindeer: 1},)
-    }
-    result = {}
+    point_trail: dict[Point, Trail] = {reindeer: {reindeer: 1}}
+    result = inf, {}
 
     while True:
         direction_current, point_current, cost_current = next(
@@ -142,57 +243,45 @@ def find_djikstra(
         )
 
         if point_current == maze.end:
-            result = point_trail[point_current, cost_current]
+            result = (
+                unvisited[(direction_current, point_current)],
+                point_trail[point_current],
+            )
             break
 
         point_incoming = point_current + direction_current
+        cost_incoming = cost_current + COST_FORWARD
 
         # update forward
-        if (
-            check_is_not_hitting_wall(maze, point_incoming)
-            and point_incoming not in visited
+        if check_can_progress(
+            maze, visited, unvisited, direction_current, point_incoming, cost_incoming
         ):
-            cost_incoming = cost_current + 1
-            unvisited = merge_with(
-                min, unvisited, {(direction_current, point_incoming): cost_incoming}
-            )
-            point_trail = merge_with(
-                lambda merged: reduce(operator.add, merged),
-                point_trail,
-                {
-                    (point_incoming, cost_incoming): tuple(
-                        merge(trail, {point_incoming: 1})
-                        for trail in point_trail[(point_current, cost_current)]
-                    )
-                },
+            unvisited[(direction_current, point_incoming)] = cost_incoming
+
+            point_trail[point_incoming] = merge(
+                point_trail.get(point_current, {}), {point_incoming: 1}
             )
 
         # update rotate
         for rotation in (RotateLeft(), RotateRight()):
-            # cost 1000
-            direction_rotated = rotate(direction_current, rotation)
-            # cost 1
+            direction_rotated = direction_current * rotation
             point_incoming = point_current + direction_rotated
+            cost_incoming = cost_current + COST_FORWARD + COST_ROTATE
 
-            if (
-                check_is_not_hitting_wall(maze, point_incoming)
-                and point_incoming not in visited
+            if check_can_progress(
+                maze,
+                visited,
+                unvisited,
+                direction_rotated,
+                point_incoming,
+                cost_incoming,
             ):
-                cost_incoming = cost_current + 1001
-                unvisited = merge_with(
-                    min,
-                    unvisited,
-                    {(direction_rotated, point_incoming): cost_incoming},
-                )
-                point_trail = merge_with(
-                    lambda merged: reduce(operator.add, merged),
-                    point_trail,
-                    {
-                        (point_incoming, cost_incoming): tuple(
-                            merge_with(sum, trail, {point_incoming: 1, rotation: 1})
-                            for trail in point_trail[(point_current, cost_current)]
-                        )
-                    },
+                unvisited[(direction_rotated, point_incoming)] = cost_incoming
+
+                point_trail[point_incoming] = merge_with(
+                    sum,
+                    point_trail.get(point_current, {}),
+                    {point_incoming: 1, rotation: 1},
                 )
 
         visited[point_current] = cost_current
@@ -201,19 +290,10 @@ def find_djikstra(
     return result
 
 
-def score(trail: Trail) -> int:
-    return sum(
-        count * (1000 if isinstance(item, Rotation) else 1)
-        for item, count in trail.items()
-    )
-
-
 def part1(input: str) -> int:
     maze, reindeer = parse(input)
 
-    return next(
-        score(dissoc(trail, reindeer)) for trail in find_djikstra(maze, reindeer)
-    )
+    return find_astar(maze, reindeer)[0]
 
 
 def visualize(maze: Maze, trail: Trail) -> str:
