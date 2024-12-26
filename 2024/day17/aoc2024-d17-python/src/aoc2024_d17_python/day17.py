@@ -1,12 +1,7 @@
 from dataclasses import dataclass
-from functools import reduce
+from functools import partial, reduce
 from sys import stdin
 from typing import Generator
-
-import dask.bag as db
-import structlog
-
-logger = structlog.get_logger()
 
 
 @dataclass
@@ -237,75 +232,39 @@ def search(computer: Computer) -> int:
         return new_a
 
     elif computer.program.code == (2, 4, 1, 5, 7, 5, 1, 6, 0, 3, 4, 2, 5, 5, 3, 0):
-        # print(
-        #    8**16 - 8**15,
-        #    "total range",
-        # )
-
-        incoming = computer.program.code[-1:]
-        cluster_1 = 0
-
-        for idx, new_a in enumerate(range(8**0, 8**1)):
-            result = evaluate_loop(computer_replace_a(computer, new_a))
-
-            if result.OUTPUT == incoming:
-                # logger.info(
-                #    "match",
-                #    n=1,
-                #    a=new_a,
-                #    result=result.OUTPUT,
-                #    goal=computer.program.code,
-                # )
-                cluster_1 = idx
-                break
-
-        incoming = computer.program.code[-2:]
-        portion_size = 8
-        cluster_2 = []
-
-        for idx, new_a in enumerate(range(8**1, 8**2)):
-            if idx // portion_size != (cluster_1 * 0o10) // portion_size:
-                continue
-
-            result = evaluate_loop(computer_replace_a(computer, new_a))
-
-            if result.OUTPUT == incoming:
-                # logger.info(
-                #    "match",
-                #    n=2,
-                #    a=new_a,
-                #    result=result.OUTPUT,
-                #    goal=computer.program.code,
-                # )
-                # within the small cluster of 8, find all that matches the last 2 numbers
-                cluster_2.append((new_a, (cluster_1, idx % portion_size)))
-
-        current_cluster = cluster_2
-        for n in range(3, 17):
-            current_cluster = match_n_digits(computer, current_cluster, n)
-
-        new_a, _ = next(current_cluster)  # type: ignore
-
-        return new_a
+        # print(8**16 - 8**15, "total range")
+        return next(
+            reduce(
+                partial(match_n_digits, computer),
+                range(1, 17),
+                None,
+            )  # type: ignore
+        )[0]
     else:
         raise Exception("Not yet unbreak")
 
 
 def match_n_digits(
     computer: Computer,
-    cluster_previous: Generator[tuple[int, tuple[int, ...]], None, None]
-    | list[tuple[int, tuple[int, ...]]],
+    cluster_previous: Generator[tuple[int, tuple[int, ...]], None, None] | None,
     n: int,
 ) -> Generator[tuple[int, tuple[int, ...]], None, None]:
     incoming = computer.program.code[-n:]
-    portion_size = 8
 
-    for _a, clusters in cluster_previous:
-        idx_offset = sum(
-            c * (8**power) for c, power in zip(clusters, range(len(clusters), 0, -1))
+    for _, clusters in cluster_previous or [(None, ())]:
+        idx_offset = (
+            sum(
+                c * (8**power)
+                for c, power in zip(clusters, range(len(clusters), 0, -1))
+            )
+            if clusters
+            else 0
         )
+
         for idx, new_a in enumerate(
-            range(8 ** (n - 1) + idx_offset, (8 ** (n - 1) + idx_offset) + portion_size)
+            range(8 ** (n - 1) + idx_offset, (8 ** (n - 1) + idx_offset) + 8)
+            if clusters
+            else range(8**0, 8**1)
         ):
             result = evaluate_loop(computer_replace_a(computer, new_a))
 
@@ -317,47 +276,7 @@ def match_n_digits(
                 #    result=result.OUTPUT,
                 #    goal=computer.program.code,
                 # )
-                yield (new_a, clusters + ((idx + idx_offset) % portion_size,))
-
-
-def search2(computer: Computer) -> int:
-    def inner(new_a: int) -> int | None:
-        try:
-            result = evaluate_loop(
-                Computer(new_a, computer.B, computer.C, computer.program)
-            )
-        except Exception:
-            print("Overflow at", new_a)
-
-        print(new_a, len(result.OUTPUT), result.OUTPUT, computer.program.code)
-        if result.OUTPUT == computer.program.code:
-            return new_a
-
-        return None
-
-    cheat = 50
-    a_list = range(
-        8 ** (len(computer.program.code) - 1) * (2**cheat - 1) // (2 ** (cheat - 3)),
-        8 ** (len(computer.program.code) - 2) * (2**cheat - 1) // (2 ** (cheat - 3)),
-        -1,
-    )
-    results = []
-    pointer, size = 0, 10000000
-    while True:
-        chunk = a_list[pointer : (pointer := pointer + size)]
-        if not chunk:
-            break
-
-        if (
-            result := db.from_sequence(  # type: ignore
-                chunk, 10000
-            )
-            .map_partitions(lambda chunk: filter(None, map(inner, chunk)))
-            .compute()
-        ):
-            results.extend(result)
-
-    return min(results)
+                yield (new_a, clusters + ((idx + idx_offset) % 8,))
 
 
 def part1(input: str) -> str:
