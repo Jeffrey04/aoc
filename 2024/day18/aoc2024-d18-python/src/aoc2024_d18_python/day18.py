@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections.abc import Generator
 from dataclasses import dataclass, field
 from functools import reduce
@@ -48,11 +50,15 @@ class Node:
     def f(self) -> int:
         return self.g + self.h
 
+    def __eq__(self, other: Node) -> bool:
+        assert isinstance(other, Node)
 
-@dataclass(order=True)
-class PNode:
-    priority: int
-    node: Node = field(compare=False)
+        return self.f == other.f
+
+    def __lt__(self, other: Node) -> bool:
+        assert isinstance(other, Node)
+
+        return self.f < other.f
 
 
 def parse(input: str, end: Point) -> Memory:
@@ -126,17 +132,16 @@ def find_route(
     memory: Memory, corrupted_map: dict[Point, Safe | Corrupted]
 ) -> tuple[int, Trail]:
     open = PriorityQueue()
-    start = Node(0, distance_to_end(memory, memory.start), memory.start)
-    open.put(PNode(start.f, start))
+    open.put(Node(0, distance_to_end(memory, memory.start), memory.start))
     visited: dict[Point, bool] = {}
     trail: dict[Point, Trail] = {memory.start: {memory.start: True}}
 
     while not open.empty():
-        current = open.get().node
+        current = open.get()
 
         if current.point == memory.end:
             return current.g, trail[current.point]
-        elif current.point in visited:
+        elif visited.get(current.point, False):
             continue
 
         visited[current.point] = True
@@ -145,10 +150,9 @@ def find_route(
             for neighbour in find_neighbours(memory, current.point):
                 trail[neighbour] = merge(trail[current.point], {neighbour: True})
 
-                incoming = Node(
-                    current.g + 1, distance_to_end(memory, neighbour), neighbour
+                open.put(
+                    Node(current.g + 1, distance_to_end(memory, neighbour), neighbour)
                 )
-                open.put(PNode(incoming.f, incoming))
 
     raise Exception("path is not found")
 
