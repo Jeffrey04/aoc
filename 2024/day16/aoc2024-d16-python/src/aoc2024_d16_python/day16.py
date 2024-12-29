@@ -8,7 +8,7 @@ from sys import stdin
 
 from cytoolz.dicttoolz import merge
 
-type Trail = dict[Point, int]
+type Trail = dict[Point, bool]
 
 COST_FORWARD = 1
 COST_ROTATE = 1000
@@ -210,21 +210,19 @@ def find_astar(
 
 def find_djikstra(
     maze: Maze, reindeer: Point, direction_default: Direction = DIRECTION_START
-) -> tuple[int, list[Trail]]:
+) -> tuple[int, set[Point]]:
     open = PriorityQueue()
     open.put(NodeDjikstra(0, direction_default, reindeer))
     closed: dict[tuple[Direction, Point], NodeAStar] = {}
-    trails: dict[tuple[Direction, Point, int], list[Trail]] = {
-        (direction_default, reindeer, 0): [{reindeer: 1}],
+    trails: dict[tuple[Direction, Point, int], set[Point]] = {
+        (direction_default, reindeer, 0): {reindeer},
     }
 
     while not open.empty():
         current = open.get()
 
         if current.point == maze.end:
-            return current.cost, trails[
-                (current.direction, current.point, current.cost)
-            ]
+            return current.cost, trails[current.direction, current.point, current.cost]
         elif (current.direction, current.point) in closed:
             continue
 
@@ -250,17 +248,14 @@ def find_djikstra(
             )
             for node in nodes:
                 trails[(node.direction, node.point, node.cost)] = trails.get(
-                    (node.direction, node.point, node.cost), []
-                )
-                trails[(node.direction, node.point, node.cost)].extend(
-                    trails[(current.direction, current.point, current.cost)]
-                    if check_same_direction(current.direction, node.direction)
-                    else (
-                        merge(trail, {node.point: 1})
-                        for trail in trails.get(
-                            (current.direction, current.point, current.cost), []
-                        )
-                    )
+                    (node.direction, node.point, node.cost), set()
+                ).union(
+                    trails[(current.direction, current.point, current.cost)],
+                    (
+                        set()
+                        if check_same_direction(current.direction, node.direction)
+                        else {node.point}
+                    ),
                 )
                 open.put(node)
 
@@ -272,14 +267,8 @@ def part1(input: str) -> int:
 
 
 def part2(input: str) -> int:
-    return len(
-        set(
-            item
-            for trail in find_djikstra(*parse(input))[-1]
-            for item in trail.keys()
-            if isinstance(item, Point)
-        )
-    )
+    return len(find_djikstra(*parse(input))[-1])
+
 
 def visualize(maze: Maze, trail: Trail) -> str:
     return "\n".join(
