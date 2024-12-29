@@ -99,16 +99,11 @@ class Node:
         return self.g + self.h
 
 
-@dataclass
+@dataclass(order=True)
 class Node2:
-    direction: Direction
-    point: Point
-    g: int
-    h: int
-
-    @property
-    def f(self) -> int:
-        return self.g + self.h
+    cost: int
+    direction: Direction = field(compare=False)
+    point: Point = field(compare=False)
 
 
 @dataclass(order=True)
@@ -200,19 +195,18 @@ def find_astar(
 def find_djikstra(
     maze: Maze, reindeer: Point, direction_default: Direction = DIRECTION_START
 ) -> Generator[tuple[int, list[Trail]], None, None]:
-    start = Node2(direction_default, reindeer, 0, 0)
     open = PriorityQueue()
-    open.put(PNode(start.f, start))
+    open.put(Node2(0, direction_default, reindeer))
     closed: dict[tuple[Direction, Point], Node] = {}
     trails: dict[tuple[Direction, Point, int], list[Trail]] = {
         (direction_default, reindeer, 0): [{reindeer: 1}],
     }
 
     while not open.empty():
-        current = open.get().node
+        current = open.get()
 
         if current.point == maze.end:
-            yield current.g, trails[(current.direction, current.point, current.f)]
+            yield current.cost, trails[(current.direction, current.point, current.cost)]
         elif (current.direction, current.point) in closed:
             continue
 
@@ -221,39 +215,36 @@ def find_djikstra(
         if not isinstance(maze.tiles.get(current.point, Space()), Wall):
             nodes = (
                 Node2(
+                    current.cost + COST_FORWARD,
                     current.direction,
                     current.point + current.direction,
-                    current.g + COST_FORWARD,
-                    0,
                 ),
                 Node2(
+                    current.cost + COST_ROTATE,
                     current.direction * RotateLeft(),
                     current.point,
-                    current.g + COST_ROTATE,
-                    current.h,
                 ),
                 Node2(
+                    current.cost + COST_ROTATE,
                     current.direction * RotateRight(),
                     current.point,
-                    current.g + COST_ROTATE,
-                    current.h,
                 ),
             )
             for node in nodes:
-                trails[(node.direction, node.point, node.f)] = trails.get(
-                    (node.direction, node.point, node.f), []
+                trails[(node.direction, node.point, node.cost)] = trails.get(
+                    (node.direction, node.point, node.cost), []
                 )
-                trails[(node.direction, node.point, node.f)].extend(
-                    trails[(current.direction, current.point, current.f)]
+                trails[(node.direction, node.point, node.cost)].extend(
+                    trails[(current.direction, current.point, current.cost)]
                     if current.direction != node.direction
                     else (
                         merge(trail, {node.point: 1})
                         for trail in trails.get(
-                            (current.direction, current.point, current.f), []
+                            (current.direction, current.point, current.cost), []
                         )
                     )
                 )
-                open.put(PNode(node.f, node))
+                open.put(node)
 
 
 def part1(input: str) -> int:

@@ -73,10 +73,9 @@ def pattern_match(towels: tuple[str, ...], pattern: str) -> dict[str, set[str]] 
     while not open.empty():
         current = open.get()
 
-        if current.progress == pattern:
-            continue
-
-        elif visited.get((current.progress, current.towel)):
+        if current.progress == pattern or visited.get(
+            (current.progress, current.towel)
+        ):
             continue
 
         visited[(current.progress, current.towel)] = True
