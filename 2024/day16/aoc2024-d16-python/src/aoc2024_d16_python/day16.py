@@ -86,7 +86,7 @@ class Maze:
 
 
 @dataclass
-class Node:
+class NodeAStar:
     direction: Direction
     point: Point
     g: int
@@ -97,18 +97,22 @@ class Node:
     def f(self) -> int:
         return self.g + self.h
 
+    def __eq__(self, other: NodeAStar) -> bool:
+        assert isinstance(other, NodeAStar)
+
+        return self.f == other.f
+
+    def __lt__(self, other: NodeAStar) -> bool:
+        assert isinstance(other, NodeAStar)
+
+        return self.f < other.f
+
 
 @dataclass(order=True)
-class Node2:
+class NodeDjikstra:
     cost: int
     direction: Direction = field(compare=False)
     point: Point = field(compare=False)
-
-
-@dataclass(order=True)
-class PNode:
-    priority: int
-    node: Node | Node2 = field(compare=False)
 
 
 DIRECTION_START = Direction(1, 0)
@@ -143,18 +147,27 @@ def distance_to_end(maze: Maze, point: Point) -> int:
     # return (maze.end.x - point.x) ** 2 + (maze.end.y - point.y) ** 2
 
 
+def check_same_direction(alpha: Direction, beta: Direction) -> bool:
+    return alpha != beta
+
+
 def find_astar(
     maze: Maze, reindeer: Point, direction_default: Direction = DIRECTION_START
 ) -> tuple[int, Trail]:
-    start = Node(
-        direction_default, reindeer, 0, distance_to_end(maze, reindeer), {reindeer: 1}
-    )
     open = PriorityQueue()
-    open.put(PNode(start.f, start))
-    closed: dict[tuple[Direction, Point], Node] = {}
+    open.put(
+        NodeAStar(
+            direction_default,
+            reindeer,
+            0,
+            distance_to_end(maze, reindeer),
+            {reindeer: 1},
+        )
+    )
+    closed: dict[tuple[Direction, Point], NodeAStar] = {}
 
     while not open.empty():
-        current = open.get().node
+        current = open.get()
 
         if current.point == maze.end:
             return current.g, current.trail
@@ -164,31 +177,33 @@ def find_astar(
         closed[(current.direction, current.point)] = current
 
         if not isinstance(maze.tiles.get(current.point, Space()), Wall):
-            nodes = (
-                Node(
+            open.put(
+                NodeAStar(
                     current.direction,
                     current.point + current.direction,
                     current.g + COST_FORWARD,
                     distance_to_end(maze, current.point + current.direction),
                     merge(current.trail, {(current.point + current.direction): 1}),
-                ),
-                Node(
+                )
+            )
+            open.put(
+                NodeAStar(
                     current.direction * RotateLeft(),
                     current.point,
                     current.g + COST_ROTATE,
                     current.h,
                     current.trail,
-                ),
-                Node(
+                )
+            )
+            open.put(
+                NodeAStar(
                     current.direction * RotateRight(),
                     current.point,
                     current.g + COST_ROTATE,
                     current.h,
                     current.trail,
-                ),
+                )
             )
-            for node in nodes:
-                open.put(PNode(node.f, node))
 
     raise Exception("Route is not found")
 
@@ -197,8 +212,8 @@ def find_djikstra(
     maze: Maze, reindeer: Point, direction_default: Direction = DIRECTION_START
 ) -> tuple[int, list[Trail]]:
     open = PriorityQueue()
-    open.put(Node2(0, direction_default, reindeer))
-    closed: dict[tuple[Direction, Point], Node] = {}
+    open.put(NodeDjikstra(0, direction_default, reindeer))
+    closed: dict[tuple[Direction, Point], NodeAStar] = {}
     trails: dict[tuple[Direction, Point, int], list[Trail]] = {
         (direction_default, reindeer, 0): [{reindeer: 1}],
     }
@@ -217,17 +232,17 @@ def find_djikstra(
 
         if not isinstance(maze.tiles.get(current.point, Space()), Wall):
             nodes = (
-                Node2(
+                NodeDjikstra(
                     current.cost + COST_FORWARD,
                     current.direction,
                     current.point + current.direction,
                 ),
-                Node2(
+                NodeDjikstra(
                     current.cost + COST_ROTATE,
                     current.direction * RotateLeft(),
                     current.point,
                 ),
-                Node2(
+                NodeDjikstra(
                     current.cost + COST_ROTATE,
                     current.direction * RotateRight(),
                     current.point,
@@ -239,7 +254,7 @@ def find_djikstra(
                 )
                 trails[(node.direction, node.point, node.cost)].extend(
                     trails[(current.direction, current.point, current.cost)]
-                    if current.direction != node.direction
+                    if check_same_direction(current.direction, node.direction)
                     else (
                         merge(trail, {node.point: 1})
                         for trail in trails.get(
