@@ -4,7 +4,7 @@ from itertools import product
 from math import floor, log10
 from sys import stdin
 
-from toolz import thread_first
+from toolz.functoolz import thread_first
 
 
 def calculate(
@@ -21,10 +21,12 @@ def check_can_calibrate(
     funcs: tuple[Callable[[int, int], int], ...],
 ) -> bool:
     return next(
-        (
-            True
-            for funcs in product(funcs, repeat=len(operands) - 1)
-            if calculate(funcs, operands) == expected
+        filter(
+            None,
+            (
+                calculate(funcs, operands) == expected
+                for funcs in product(funcs, repeat=len(operands) - 1)
+            ),
         ),
         False,
     )
