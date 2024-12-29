@@ -1,14 +1,17 @@
-from collections import Counter
 from collections.abc import Generator
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field
 from enum import Enum
+from functools import partial
+from itertools import product
 from queue import PriorityQueue
 from sys import stdin
 
 import structlog
-from cytoolz.dicttoolz import merge
 
 logger = structlog.get_logger()
+
+CHEAT_MAX_TIME = 20
 
 
 class Symbol(Enum):
@@ -37,8 +40,6 @@ class Point:
 class Node:
     time: int
     point: Point = field(compare=False)
-    cheat_wall: Point | None = field(compare=False, default=None)
-    trail: dict[Point, bool] = field(compare=False, default=lambda: {})  # type: ignore
 
 
 @dataclass
@@ -75,11 +76,46 @@ def check_point_is_in_track(race_track: RaceTrack, point: Point) -> bool:
     return 0 <= point.x < race_track.width and 0 <= point.y < race_track.height
 
 
-def find_neighbours_safe(
-    race_track: RaceTrack, point: Point
-) -> Generator[tuple[int, Point], None, None]:
+def check_wall_can_pass_through(race_track: RaceTrack, wall: Point) -> bool:
+    return all(
+        check_point_is_in_track(race_track, neighbour)
+        and isinstance(race_track.tiles.get(neighbour, Track()), Track)
+        for neighbour in (
+            Point(wall.x, wall.y + 1),
+            Point(wall.x, wall.y - 1),
+        )
+    ) or all(
+        check_point_is_in_track(race_track, neighbour)
+        and isinstance(race_track.tiles.get(neighbour, Track()), Track)
+        for neighbour in (
+            Point(wall.x + 1, wall.y),
+            Point(wall.x - 1, wall.y),
+        )
+    )
+
+
+def check_wall_is_facing_track(race_track: RaceTrack, wall: Point) -> bool:
+    return any(
+        isinstance(race_track.tiles.get(neighbour, Track()), Track)
+        for neighbour in find_neighbour(race_track, wall)
+    )
+
+
+def check_wall_pair_is_accessible(
+    race_track: RaceTrack, start: Point, end: Point
+) -> bool:
+    if start == end:
+        return check_wall_can_pass_through(race_track, start)
+    else:
+        return get_pair_distance(start, end) <= (CHEAT_MAX_TIME - 2) and (
+            check_wall_is_facing_track(race_track, start)
+            and check_wall_is_facing_track(race_track, end)
+        )
+
+
+def find_neighbour(race_track: RaceTrack, point: Point) -> Generator[Point, None, None]:
     return (
-        (1, neighbour)
+        neighbour
         for neighbour in (
             Point(point.x + 1, point.y),
             Point(point.x - 1, point.y),
@@ -90,138 +126,192 @@ def find_neighbours_safe(
     )
 
 
-def find_neighbours_cheat(
-    race_track: RaceTrack, point: Point
-) -> Generator[tuple[int, Point, Point], None, None]:
-    return (
-        (2, mid, neighbour)
-        for mid, neighbour in (
-            (Point(point.x + 1, point.y), Point(point.x + 2, point.y)),
-            (Point(point.x - 1, point.y), Point(point.x - 2, point.y)),
-            (Point(point.x, point.y + 1), Point(point.x, point.y + 2)),
-            (Point(point.x, point.y - 1), Point(point.x, point.y - 2)),
-        )
-        if check_point_is_in_track(race_track, neighbour)
-        and isinstance(race_track.tiles.get(mid, Track()), Wall)
-    )
-
-
-def find_time_shortest(race_track: RaceTrack, end_point: Point) -> int:
+def find_best_track_time(
+    race_track: RaceTrack, start: Point | None = None, end: Point | None = None
+) -> int:
     open = PriorityQueue()
-    open.put(Node(0, race_track.start))
+    open.put(Node(0, start or race_track.start))
     visited = {}
 
     while not open.empty():
         current = open.get()
 
-        if current.point == race_track.end:
+        if current.point == (end or race_track.end):
             return current.time
         elif visited.get(current.point, False):
             continue
 
         visited[current.point] = True
 
-        if not isinstance(race_track.tiles.get(current.point, Track()), Wall):
-            for time, point in find_neighbours_safe(race_track, current.point):
-                open.put(Node(current.time + time, point))
+        if (
+            not isinstance(race_track.tiles.get(current.point, Track()), Wall)
+            or current.point == start
+        ):
+            for point in find_neighbour(race_track, current.point):
+                open.put(Node(current.time + 1, point))
 
     raise Exception("There is no path")
 
 
-def find_time_cheated(race_track: RaceTrack, best_time: int) -> dict[Point, int]:
+def find_best_wall_time(race_track: RaceTrack, start: Point, end: Point) -> int:
+    """
+    NOTE: (time + 2) is the time needed to disable collision
+    """
     open = PriorityQueue()
-    open.put(Node(0, race_track.start, None, {race_track.start: True}))
-    result = {}
+    open.put(Node(0, start))
     visited = {}
-    debug_count = 1
 
     while not open.empty():
         current = open.get()
-        debug_count -= 1
-        # logger.info("progress", result=sum(result.values()), candidates=debug_count)
 
-        if visited.get((current.point, current.cheat_wall), False):
+        if current.point == end:
+            return current.time
+        elif visited.get(current.point, False):
             continue
 
-        visited[(current.point, current.cheat_wall)] = True
+        visited[current.point] = True
 
-        if current.cheat_wall is not None and current.point == race_track.end:
-            result[current.cheat_wall] = best_time - current.time
+        if current.time >= (CHEAT_MAX_TIME - 2):
             continue
+        elif isinstance(race_track.tiles.get(current.point, Track()), Wall):
+            for point in find_neighbour(race_track, current.point):
+                open.put(Node(current.time + 1, point))
 
-        if not isinstance(race_track.tiles.get(current.point, Track()), Wall):
-            for time, point in find_neighbours_safe(race_track, current.point):
-                debug_count += 1
-                open.put(
-                    Node(
-                        current.time + time,
-                        point,
-                        current.cheat_wall,
-                        merge(current.trail, {point: True}),
-                    )
+    raise Exception("There is no path")
+
+
+def find_time_saved(
+    wall_pair: tuple[Point, Point], race_track: RaceTrack, best_time: int
+) -> tuple[tuple[Point, Point], int] | None:
+    start, end = wall_pair
+    try:
+        time = (
+            find_best_wall_time(race_track, start, end)
+            + find_best_track_time(race_track, race_track.start, start)
+            + find_best_track_time(race_track, end, race_track.end)
+        )
+    except Exception:
+        return None
+
+    if time < best_time:
+        return (wall_pair, best_time - time)
+
+    return None
+
+
+def get_pair_distance(start: Point, end: Point) -> int:
+    return abs(start.x - end.x) + abs(start.y - end.y)
+
+
+def find_time_cheated(
+    race_track: RaceTrack, best_time: int
+) -> tuple[tuple[Point, int], ...]:
+    wall_pairs = tuple(
+        (wall, wall)
+        for wall in race_track.tiles.keys()
+        if check_wall_can_pass_through(race_track, wall)
+    )
+
+    if len(wall_pairs) < 100:
+        return tuple(
+            (start, time_saved)
+            for (start, _), time_saved in filter(
+                None,
+                (
+                    find_time_saved(wall_pair, race_track, best_time)
+                    for wall_pair in wall_pairs
+                ),
+            )
+        )
+    else:
+        with ProcessPoolExecutor() as executor:
+            return tuple(
+                (start, time_saved)
+                for (start, _), time_saved in filter(
+                    None,
+                    executor.map(
+                        partial(
+                            find_time_saved, race_track=race_track, best_time=best_time
+                        ),
+                        wall_pairs,
+                        chunksize=100,
+                    ),
                 )
+            )
 
-            if current.cheat_wall is None:
-                for time, wall, point in find_neighbours_cheat(
-                    race_track, current.point
-                ):
-                    debug_count += 1
-                    open.put(
-                        Node(
-                            current.time + time,
-                            point,
-                            wall,
-                            merge(current.trail, {wall: True, point: True}),
-                        )
+
+def find_time_cheated_new_rule(
+    race_track: RaceTrack, best_time: int
+) -> tuple[tuple[tuple[Point, Point], int], ...]:
+    wall_pairs = tuple(
+        pair
+        for pair in product(race_track.tiles.keys(), repeat=2)
+        if check_wall_pair_is_accessible(race_track, *pair)
+    )
+
+    if len(wall_pairs) < 10000:
+        return tuple(
+            filter(
+                None,
+                (
+                    find_time_saved(
+                        wall_pair,  # type: ignore
+                        race_track,
+                        best_time,
                     )
+                    for wall_pair in wall_pairs
+                ),
+            )
+        )
+    else:
+        with ProcessPoolExecutor() as executor:
+            return tuple(
+                filter(
+                    None,
+                    executor.map(
+                        partial(
+                            find_time_saved, race_track=race_track, best_time=best_time
+                        ),
+                        wall_pairs,
+                        chunksize=100,
+                    ),
+                )
+            )
 
-    return result
 
-
-def part1(input: str) -> Counter[int]:
+def part1(input: str) -> int:
     race_track = parse(input)
 
-    return Counter(
-        value
-        for value in find_time_cheated(
-            race_track, find_time_shortest(race_track)
-        ).values()
-        if value >= 100
-    )
-
-
-def visualize(race_track: RaceTrack, wall: Point, trail) -> str:
-    return "\n".join(
-        "".join(
-            visualize_tile(race_track, Point(x, y), wall, trail)
-            # fmt: skip
-            for x in range(race_track.width)
+    return len(
+        tuple(
+            time_saved
+            for _, time_saved in find_time_cheated(
+                race_track, find_best_track_time(race_track)
+            )
+            if time_saved >= 100
         )
-        for y in range(race_track.height)
     )
 
 
-def visualize_tile(race_track: RaceTrack, point: Point, wall: Point, trail) -> str:
-    if point == wall:
-        return "@"
-    elif point in trail:
-        return "%"
-    else:
-        match race_track.tiles.get(point, Track()):
-            case Wall():
-                return "#"
+def part2(input: str) -> int:
+    race_track = parse(input)
 
-            case Track():
-                return "."
-
-            case _:
-                raise Exception("Undefined behavior")
+    return len(
+        tuple(
+            time_saved
+            for _, time_saved in find_time_cheated_new_rule(
+                race_track, find_best_track_time(race_track)
+            )
+            if time_saved >= 100
+        )
+    )
 
 
-def main():
+def main() -> None:
     input = stdin.read()
 
-    print("PYTHON:", part1(input))
+    # print("PYTHON:", part1(input), part2(input))
+    print("PYTHON:", part2(input))
 
 
 if __name__ == "__main__":

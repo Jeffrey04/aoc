@@ -2,7 +2,12 @@ from collections import Counter
 
 import pytest
 
-from aoc2024_d20_python.day20 import find_time_cheated, find_time_shortest, parse
+from aoc2024_d20_python.day20 import (
+    find_best_track_time,
+    find_time_cheated,
+    find_time_cheated_new_rule,
+    parse,
+)
 
 input = """
 ###############
@@ -27,10 +32,9 @@ def test_find_time_shortest() -> None:
     race_track = parse(input)
     expected = 84
 
-    assert find_time_shortest(race_track, race_track.end) == expected
+    assert find_best_track_time(race_track) == expected
 
 
-@pytest.mark.skip()
 def test_find_time_cheated() -> None:
     race_track = parse(input)
     expected = Counter(
@@ -49,7 +53,36 @@ def test_find_time_cheated() -> None:
         }
     )
 
+    assert Counter(value for _, value in find_time_cheated(race_track, 84)) == expected
+
+
+def test_find_time_cheated_new() -> None:
+    race_track = parse(input)
+    expected = Counter(
+        {
+            50: 32,
+            52: 31,
+            54: 29,
+            56: 39,
+            58: 25,
+            60: 23,
+            62: 20,
+            64: 19,
+            66: 12,
+            68: 14,
+            70: 12,
+            72: 22,
+            74: 4,
+            76: 3,
+        }
+    )
+
     assert (
-        Counter(value for value in find_time_cheated(race_track, 84).values())
+        Counter(
+            value
+            for _, value in find_time_cheated_new_rule(race_track, 84)
+            # spacer
+            if value >= 50
+        )
         == expected
     )
