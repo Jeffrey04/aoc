@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections.abc import Generator
 from dataclasses import dataclass, field
 from enum import Enum
-from math import inf
 from queue import PriorityQueue
 from sys import stdin
 
@@ -146,7 +145,7 @@ def distance_to_end(maze: Maze, point: Point) -> int:
 
 def find_astar(
     maze: Maze, reindeer: Point, direction_default: Direction = DIRECTION_START
-) -> Generator[tuple[int, Trail], None, None]:
+) -> tuple[int, Trail]:
     start = Node(
         direction_default, reindeer, 0, distance_to_end(maze, reindeer), {reindeer: 1}
     )
@@ -158,7 +157,7 @@ def find_astar(
         current = open.get().node
 
         if current.point == maze.end:
-            yield current.g, current.trail
+            return current.g, current.trail
         elif (current.direction, current.point) in closed:
             continue
 
@@ -191,10 +190,12 @@ def find_astar(
             for node in nodes:
                 open.put(PNode(node.f, node))
 
+    raise Exception("Route is not found")
+
 
 def find_djikstra(
     maze: Maze, reindeer: Point, direction_default: Direction = DIRECTION_START
-) -> Generator[tuple[int, list[Trail]], None, None]:
+) -> tuple[int, list[Trail]]:
     open = PriorityQueue()
     open.put(Node2(0, direction_default, reindeer))
     closed: dict[tuple[Direction, Point], Node] = {}
@@ -206,7 +207,9 @@ def find_djikstra(
         current = open.get()
 
         if current.point == maze.end:
-            yield current.cost, trails[(current.direction, current.point, current.cost)]
+            return current.cost, trails[
+                (current.direction, current.point, current.cost)
+            ]
         elif (current.direction, current.point) in closed:
             continue
 
@@ -246,16 +249,18 @@ def find_djikstra(
                 )
                 open.put(node)
 
+    raise Exception("Route is not found")
+
 
 def part1(input: str) -> int:
-    return next(find_astar(*parse(input)))[0]
+    return find_astar(*parse(input))[0]
 
 
 def part2(input: str) -> int:
     return len(
         set(
             item
-            for trail in next(find_djikstra(*parse(input)))[-1]
+            for trail in find_djikstra(*parse(input))[-1]
             for item in trail.keys()
             if isinstance(item, Point)
         )
