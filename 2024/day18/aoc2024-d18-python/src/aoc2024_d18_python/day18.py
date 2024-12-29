@@ -129,7 +129,7 @@ def find_route(
     start = Node(0, distance_to_end(memory, memory.start), memory.start)
     open.put(PNode(start.f, start))
     visited: dict[Point, bool] = {}
-    trail: dict[Point, Trail] = {memory.start: {memory.start: 1}}
+    trail: dict[Point, Trail] = {memory.start: {memory.start: True}}
 
     while not open.empty():
         current = open.get().node
@@ -143,7 +143,7 @@ def find_route(
 
         if not isinstance(corrupted_map.get(current.point, Safe()), Corrupted):
             for neighbour in find_neighbours(memory, current.point):
-                trail[neighbour] = merge(trail[current.point], {neighbour: 1})
+                trail[neighbour] = merge(trail[current.point], {neighbour: True})
 
                 incoming = Node(
                     current.g + 1, distance_to_end(memory, neighbour), neighbour
@@ -162,10 +162,10 @@ def part2(input: str, end: Point) -> str:
     memory = parse(input, end)
     _, trail = find_route(memory, get_corrupted_map(memory, 0))
 
-    for idx, point in enumerate(memory.bytes):
-        if point in trail:
+    for fallen_count, point in enumerate(memory.bytes, 1):
+        if trail.get(point, False):
             try:
-                _, trail = find_route(memory, get_corrupted_map(memory, idx + 1))
+                _, trail = find_route(memory, get_corrupted_map(memory, fallen_count))
             except Exception:
                 return str(point)
 
