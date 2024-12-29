@@ -82,7 +82,7 @@ def visualize(
 ) -> str:
     return "\n".join(
         "".join(
-            visualize_byte(memory, Point(x, y), trail, corrupted_map)
+            visualize_byte(Point(x, y), trail, corrupted_map)
             for x in range(memory.end.x + 1)
         )
         for y in range(memory.end.y + 1)
@@ -90,7 +90,6 @@ def visualize(
 
 
 def visualize_byte(
-    memory: Memory,
     point: Point,
     trail: Trail | None,
     corrupted_map: dict[Point, Safe | Corrupted],
