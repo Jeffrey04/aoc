@@ -1,7 +1,6 @@
 import re
-from dataclasses import dataclass, field, make_dataclass
+from dataclasses import dataclass, field, is_dataclass, make_dataclass
 from functools import reduce
-from operator import attrgetter
 from queue import PriorityQueue
 from re import I
 from sys import stdin
@@ -38,24 +37,25 @@ def parse(input: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
 
 @memoize
 def combo_count(combinations, candidates: tuple[str, ...], nest: int = 0) -> int:
-    result = []
+    assert is_dataclass(combinations)
 
-    for current in candidates:
-        if match := re.match(r"\{(\w+)\}", current):
-            result.append(
-                combo_count(
-                    combinations,
-                    tuple(
-                        child.split(";")[0]
-                        for child in attrgetter(match.group(1))(combinations)
-                    ),
-                    nest + 1,
-                )
+    return reduce(
+        lambda current, incoming: current
+        + (
+            combo_count(
+                combinations,
+                tuple(
+                    child.split(";")[0]
+                    for child in getattr(combinations, match.group(1))
+                ),
+                nest + 1,
             )
-        else:
-            result.append(1)
-
-    return sum(result)
+            if (match := re.match(r"\{(\w+)\}", incoming))
+            else 1
+        ),
+        candidates,
+        0,
+    )
 
 
 def pattern_match(towels: tuple[str, ...], pattern: str) -> dict[str, set[str]] | None:
@@ -82,13 +82,11 @@ def pattern_match(towels: tuple[str, ...], pattern: str) -> dict[str, set[str]] 
 
         for towel in towels:
             progress_incoming = current.progress + towel
+
             if pattern.startswith(progress_incoming):
                 combinations[progress_incoming] = combinations.get(
                     progress_incoming, set()
-                )
-                combinations[progress_incoming].add(
-                    f"{{{current.progress}}};{towel}",
-                )
+                ).union({f"{{{current.progress}}};{towel}"})
                 open.put(
                     Node(len(combinations[progress_incoming]), towel, progress_incoming)
                 )
