@@ -147,10 +147,6 @@ def distance_to_end(maze: Maze, point: Point) -> int:
     # return (maze.end.x - point.x) ** 2 + (maze.end.y - point.y) ** 2
 
 
-def check_same_direction(alpha: Direction, beta: Direction) -> bool:
-    return alpha != beta
-
-
 def find_astar(
     maze: Maze, reindeer: Point, direction_default: Direction = DIRECTION_START
 ) -> tuple[int, Trail]:
@@ -164,17 +160,17 @@ def find_astar(
             {reindeer: 1},
         )
     )
-    closed: dict[tuple[Direction, Point], NodeAStar] = {}
+    closed: dict[tuple[Direction, Point], bool] = {}
 
     while not open.empty():
         current = open.get()
 
         if current.point == maze.end:
             return current.g, current.trail
-        elif (current.direction, current.point) in closed:
+        elif closed.get((current.direction, current.point), False):
             continue
 
-        closed[(current.direction, current.point)] = current
+        closed[(current.direction, current.point)] = True
 
         if not isinstance(maze.tiles.get(current.point, Space()), Wall):
             open.put(
@@ -213,20 +209,20 @@ def find_djikstra(
 ) -> tuple[int, set[Point]]:
     open = PriorityQueue()
     open.put(NodeDjikstra(0, direction_default, reindeer))
-    closed: dict[tuple[Direction, Point], NodeAStar] = {}
-    trails: dict[tuple[Direction, Point, int], set[Point]] = {
-        (direction_default, reindeer, 0): {reindeer},
+    closed: dict[tuple[Direction, Point], bool] = {}
+    trails: dict[tuple[Point, int], set[Point]] = {
+        (reindeer, 0): {reindeer},
     }
 
     while not open.empty():
         current = open.get()
 
         if current.point == maze.end:
-            return current.cost, trails[current.direction, current.point, current.cost]
-        elif (current.direction, current.point) in closed:
+            return current.cost, trails[current.point, current.cost]
+        elif closed.get((current.direction, current.point), False):
             continue
 
-        closed[(current.direction, current.point)] = current
+        closed[(current.direction, current.point)] = True
 
         if not isinstance(maze.tiles.get(current.point, Space()), Wall):
             nodes = (
@@ -247,16 +243,9 @@ def find_djikstra(
                 ),
             )
             for node in nodes:
-                trails[(node.direction, node.point, node.cost)] = trails.get(
-                    (node.direction, node.point, node.cost), set()
-                ).union(
-                    trails[(current.direction, current.point, current.cost)],
-                    (
-                        set()
-                        if check_same_direction(current.direction, node.direction)
-                        else {node.point}
-                    ),
-                )
+                trails[(node.point, node.cost)] = trails.get(
+                    (node.point, node.cost), set()
+                ).union(trails[(current.point, current.cost)], {node.point})
                 open.put(node)
 
     raise Exception("Route is not found")
