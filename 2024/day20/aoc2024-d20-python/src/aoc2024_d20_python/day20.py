@@ -3,7 +3,7 @@ from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import partial
-from itertools import permutations, product
+from itertools import combinations
 from queue import PriorityQueue
 from sys import stdin
 
@@ -141,38 +141,28 @@ def get_tracks(race_track: RaceTrack) -> Generator[Point, None, None]:
 def find_time_cheated(
     race_track: RaceTrack, best_time: int, trail: Trail
 ) -> Generator[tuple[tuple[Point, Point], int], None, None]:
-    track_pairs = (
-        (start, end, CHEAT_OLD_TIME)
-        for (start, end) in permutations(trail, 2)
-        if get_pair_distance(start, end) == CHEAT_OLD_TIME
-    )
-
-    with ProcessPoolExecutor() as executor:
-        return filter(
-            None,
-            executor.map(
-                partial(find_time, race_track=race_track, best_time=best_time),
-                track_pairs,
-                chunksize=1000,
-            ),
-        )  # type: ignore
+    return filter(
+        None,
+        (
+            find_time_saved(track_pair, race_track=race_track, best_time=best_time)
+            for track_pair in (
+                (start, end, CHEAT_OLD_TIME)
+                for (start, end) in combinations(trail, 2)
+                if get_pair_distance(start, end) == CHEAT_OLD_TIME
+            )
+        ),
+    )  # type: ignore
 
 
-def find_time(
+def find_time_saved(
     track_pair: tuple[Point, Point, int], race_track: RaceTrack, best_time: int
 ) -> tuple[tuple[Point, Point], int] | None:
     start, end, distance = track_pair
-    try:
-        time = (
-            find_best_track(race_track, race_track.start, start)[0]
-            + find_best_track(race_track, end, race_track.end)[0]
-            + distance
-        )
-    except Exception:
-        return None
 
-    if time < best_time:
-        return (start, end), best_time - time
+    time_save = find_best_track(race_track, start, end)[0] - distance
+
+    if time_save > 0:
+        return (start, end), time_save
 
     return None
 
@@ -180,18 +170,19 @@ def find_time(
 def find_time_cheated_new_rule(
     race_track: RaceTrack, best_time: int, trail: Trail
 ) -> Generator[tuple[tuple[Point, Point], int], None, None]:
-    track_pairs = (
-        (start, end, get_pair_distance(start, end))
-        for (start, end) in permutations(trail, 2)
-        if get_pair_distance(start, end) <= CHEAT_MAX_TIME
-    )
-
     with ProcessPoolExecutor() as executor:
         return filter(
             None,
             executor.map(
-                partial(find_time, race_track=race_track, best_time=best_time),
-                track_pairs,
+                partial(find_time_saved, race_track=race_track, best_time=best_time),
+                (
+                    (start, end, distance)
+                    for start, end, distance in (
+                        (start, end, get_pair_distance(start, end))
+                        for (start, end) in combinations(trail, 2)
+                    )
+                    if distance <= CHEAT_MAX_TIME
+                ),
                 chunksize=1000,
             ),
         )  # type: ignore
@@ -228,8 +219,7 @@ def part2(input: str) -> int:
 def main() -> None:
     input = stdin.read()
 
-    # print("PYTHON:", part1(input), part2(input))
-    print("PYTHON:", part2(input))
+    print("PYTHON:", part1(input), part2(input))
 
 
 if __name__ == "__main__":
