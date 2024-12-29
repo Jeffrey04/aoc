@@ -118,6 +118,7 @@ def find_best_track(
 
 
 def find_track_time(race_track: RaceTrack) -> int:
+    # FIXME still needed?
     return race_track.width * race_track.height - len(race_track.tiles) - 1
 
 
@@ -146,18 +147,34 @@ def find_time_cheated(
         if get_pair_distance(start, end) == CHEAT_OLD_TIME
     )
 
-    for start, end, distance in track_pairs:
-        try:
-            time = (
-                find_best_track(race_track, race_track.start, start)[0]
-                + find_best_track(race_track, end, race_track.end)[0]
-                + distance
-            )
-        except Exception:
-            return None
+    with ProcessPoolExecutor() as executor:
+        return filter(
+            None,
+            executor.map(
+                partial(find_time, race_track=race_track, best_time=best_time),
+                track_pairs,
+                chunksize=1000,
+            ),
+        )  # type: ignore
 
-        if time < best_time:
-            yield (start, end), best_time - time
+
+def find_time(
+    track_pair: tuple[Point, Point, int], race_track: RaceTrack, best_time: int
+) -> tuple[tuple[Point, Point], int] | None:
+    start, end, distance = track_pair
+    try:
+        time = (
+            find_best_track(race_track, race_track.start, start)[0]
+            + find_best_track(race_track, end, race_track.end)[0]
+            + distance
+        )
+    except Exception:
+        return None
+
+    if time < best_time:
+        return (start, end), best_time - time
+
+    return None
 
 
 def find_time_cheated_new_rule(
@@ -169,18 +186,15 @@ def find_time_cheated_new_rule(
         if get_pair_distance(start, end) <= CHEAT_MAX_TIME
     )
 
-    for start, end, distance in track_pairs:
-        try:
-            time = (
-                find_best_track(race_track, race_track.start, start)[0]
-                + find_best_track(race_track, end, race_track.end)[0]
-                + distance
-            )
-        except Exception:
-            return None
-
-        if time < best_time:
-            yield (start, end), best_time - time
+    with ProcessPoolExecutor() as executor:
+        return filter(
+            None,
+            executor.map(
+                partial(find_time, race_track=race_track, best_time=best_time),
+                track_pairs,
+                chunksize=1000,
+            ),
+        )  # type: ignore
 
 
 def part1(input: str) -> int:
@@ -214,7 +228,8 @@ def part2(input: str) -> int:
 def main() -> None:
     input = stdin.read()
 
-    print("PYTHON:", part1(input), part2(input))
+    # print("PYTHON:", part1(input), part2(input))
+    print("PYTHON:", part2(input))
 
 
 if __name__ == "__main__":
