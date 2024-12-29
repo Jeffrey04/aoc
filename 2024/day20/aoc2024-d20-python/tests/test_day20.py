@@ -3,9 +3,10 @@ from collections import Counter
 import pytest
 
 from aoc2024_d20_python.day20 import (
-    find_best_track_time,
+    find_best_track,
     find_time_cheated,
     find_time_cheated_new_rule,
+    find_track_time,
     parse,
 )
 
@@ -27,12 +28,17 @@ input = """
 ###############
 """
 
+def test_find_track_time() -> None:
+    expected = 84
+
+    assert find_track_time(parse(input)) == expected
+
 
 def test_find_time_shortest() -> None:
     race_track = parse(input)
     expected = 84
 
-    assert find_best_track_time(race_track) == expected
+    assert find_best_track(race_track)[0] == expected
 
 
 def test_find_time_cheated() -> None:
@@ -53,7 +59,16 @@ def test_find_time_cheated() -> None:
         }
     )
 
-    assert Counter(value for _, value in find_time_cheated(race_track, 84)) == expected
+    assert (
+        Counter(
+            value
+            for _, value in find_time_cheated(
+                race_track,
+                *find_best_track(race_track, race_track.start, race_track.end),
+            )
+        )
+        == expected
+    )
 
 
 def test_find_time_cheated_new() -> None:
@@ -80,7 +95,10 @@ def test_find_time_cheated_new() -> None:
     assert (
         Counter(
             value
-            for _, value in find_time_cheated_new_rule(race_track, 84)
+            for _, value in find_time_cheated_new_rule(
+                race_track,
+                *find_best_track(race_track, race_track.start, race_track.end),
+            )
             # spacer
             if value >= 50
         )
