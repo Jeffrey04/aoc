@@ -42,16 +42,19 @@ def parse_line(expected: str, operands: str) -> tuple[int, tuple[int, ...]]:
     return int(expected), tuple(int(item) for item in operands.strip().split(" "))
 
 
-def evaluate(input: str, funcs: tuple[Callable[[int, int], int], ...]):
+def evaluate(
+    input_parsed: tuple[tuple[int, tuple[int, ...]], ...],
+    funcs: tuple[Callable[[int, int], int], ...],
+):
     return sum(
         expected
-        for expected, operands in parse(input)
+        for expected, operands in input_parsed
         if check_can_calibrate(expected, operands, funcs)
     )
 
 
 def part1(input: str) -> int:
-    return evaluate(input, (operator.mul, operator.add))
+    return evaluate(parse(input), (operator.mul, operator.add))
 
 
 def int_concat(alpha: int, beta: int) -> int:
@@ -59,7 +62,7 @@ def int_concat(alpha: int, beta: int) -> int:
 
 
 def part2(input: str) -> int:
-    return evaluate(input, (operator.mul, operator.add, int_concat))
+    return evaluate(parse(input), (operator.mul, operator.add, int_concat))
 
 
 def main() -> None:
