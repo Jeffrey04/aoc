@@ -1,4 +1,4 @@
-from collections.abc import Generator
+from collections.abc import Generator, Iterator
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field
 from enum import Enum
@@ -6,6 +6,7 @@ from functools import partial
 from itertools import combinations
 from queue import PriorityQueue
 from sys import stdin
+from typing import Type
 
 import structlog
 
@@ -80,6 +81,40 @@ def check_point_is_in_track(race_track: RaceTrack, point: Point) -> bool:
     return 0 <= point.x < race_track.width and 0 <= point.y < race_track.height
 
 
+def check_point_is_type(race_track: RaceTrack, point: Point, cls: Type) -> bool:
+    return isinstance(race_track.tiles.get(point, Track()), cls)
+
+
+def check_pair_is_separated_by_walls(
+    race_track: RaceTrack, start: Point, end: Point
+) -> bool:
+    return any(
+        check_point_is_type(race_track, point, Wall)
+        for point in (
+            set(
+                Point(x, start.y)
+                for x in range(min((start.x, end.x)), max((start.x, end.x)) + 1)
+            )
+            | set(
+                Point(start.x, y)
+                for y in range(min((start.y, end.y)), max((start.y, end.y)) + 1)
+            )
+        )
+    ) or any(
+        check_point_is_type(race_track, point, Wall)
+        for point in (
+            set(
+                Point(end.x, y)
+                for y in range(min((start.y, end.y)), max((start.y, end.y)) + 1)
+            )
+            | set(
+                Point(x, end.y)
+                for x in range(min((start.x, end.x)), max((start.x, end.x)) + 1)
+            )
+        )
+    )
+
+
 def find_neighbour(race_track: RaceTrack, point: Point) -> Generator[Point, None, None]:
     return (
         neighbour
@@ -98,19 +133,19 @@ def find_best_track(
 ) -> tuple[int, Trail]:
     open = PriorityQueue()
     open.put(Node(0, start or race_track.start, (start or race_track.start,)))
-    visited = {}
+    visited = set()
 
     while not open.empty():
         current = open.get()
 
         if current.point == (end or race_track.end):
             return current.time, current.trail
-        elif visited.get(current.point, False):
+        elif current.point in visited:
             continue
 
-        visited[current.point] = True
+        visited.add(current.point)
 
-        if not isinstance(race_track.tiles.get(current.point, Track()), Wall):
+        if not check_point_is_type(race_track, current.point, Wall):
             for point in find_neighbour(race_track, current.point):
                 open.put(Node(current.time + 1, point, current.trail + (point,)))
 
@@ -134,13 +169,13 @@ def get_tracks(race_track: RaceTrack) -> Generator[Point, None, None]:
             for x in range(race_track.width)
             for y in range(race_track.height)
         )
-        if isinstance(race_track.tiles.get(point, Track()), Track)
+        if check_point_is_type(race_track, point, Track)
     )
 
 
 def find_time_cheated(
     race_track: RaceTrack, best_time: int, trail: Trail
-) -> Generator[tuple[tuple[Point, Point], int], None, None]:
+) -> Iterator[tuple[tuple[Point, Point], int]]:
     return filter(
         None,
         (
@@ -149,9 +184,10 @@ def find_time_cheated(
                 (start, end, CHEAT_OLD_TIME)
                 for (start, end) in combinations(trail, 2)
                 if get_pair_distance(start, end) == CHEAT_OLD_TIME
+                and check_pair_is_separated_by_walls(race_track, start, end)
             )
         ),
-    )  # type: ignore
+    )
 
 
 def find_time_saved(
@@ -169,7 +205,7 @@ def find_time_saved(
 
 def find_time_cheated_new_rule(
     race_track: RaceTrack, best_time: int, trail: Trail
-) -> Generator[tuple[tuple[Point, Point], int], None, None]:
+) -> Iterator[tuple[tuple[Point, Point], int]]:
     with ProcessPoolExecutor() as executor:
         return filter(
             None,
@@ -182,6 +218,7 @@ def find_time_cheated_new_rule(
                         for (start, end) in combinations(trail, 2)
                     )
                     if distance <= CHEAT_MAX_TIME
+                    and check_pair_is_separated_by_walls(race_track, start, end)
                 ),
                 chunksize=1000,
             ),

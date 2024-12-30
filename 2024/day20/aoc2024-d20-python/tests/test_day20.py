@@ -1,7 +1,5 @@
 from collections import Counter
 
-import pytest
-
 from aoc2024_d20_python.day20 import (
     find_best_track,
     find_time_cheated,
