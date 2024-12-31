@@ -4,7 +4,6 @@ from aoc2024_d20_python.day20 import (
     find_best_track,
     find_time_cheated,
     find_time_cheated_new_rule,
-    find_track_time,
     parse,
 )
 
@@ -25,12 +24,6 @@ input = """
 #...#...#...###
 ###############
 """
-
-def test_find_track_time() -> None:
-    expected = 84
-
-    assert find_track_time(parse(input)) == expected
-
 
 def test_find_time_shortest() -> None:
     race_track = parse(input)
@@ -62,7 +55,7 @@ def test_find_time_cheated() -> None:
             value
             for _, value in find_time_cheated(
                 race_track,
-                *find_best_track(race_track, race_track.start, race_track.end),
+                find_best_track(race_track, race_track.start, race_track.end)[-1],
             )
         )
         == expected
@@ -95,7 +88,7 @@ def test_find_time_cheated_new() -> None:
             value
             for _, value in find_time_cheated_new_rule(
                 race_track,
-                *find_best_track(race_track, race_track.start, race_track.end),
+                find_best_track(race_track, race_track.start, race_track.end)[-1],
             )
             # spacer
             if value >= 50

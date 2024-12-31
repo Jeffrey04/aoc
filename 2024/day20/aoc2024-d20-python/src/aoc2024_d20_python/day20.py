@@ -85,36 +85,6 @@ def check_point_is_type(race_track: RaceTrack, point: Point, cls: Type) -> bool:
     return isinstance(race_track.tiles.get(point, Track()), cls)
 
 
-def check_pair_is_separated_by_walls(
-    race_track: RaceTrack, start: Point, end: Point
-) -> bool:
-    return any(
-        check_point_is_type(race_track, point, Wall)
-        for point in (
-            set(
-                Point(x, start.y)
-                for x in range(min((start.x, end.x)), max((start.x, end.x)) + 1)
-            )
-            | set(
-                Point(start.x, y)
-                for y in range(min((start.y, end.y)), max((start.y, end.y)) + 1)
-            )
-        )
-    ) or any(
-        check_point_is_type(race_track, point, Wall)
-        for point in (
-            set(
-                Point(end.x, y)
-                for y in range(min((start.y, end.y)), max((start.y, end.y)) + 1)
-            )
-            | set(
-                Point(x, end.y)
-                for x in range(min((start.x, end.x)), max((start.x, end.x)) + 1)
-            )
-        )
-    )
-
-
 def find_neighbour(race_track: RaceTrack, point: Point) -> Generator[Point, None, None]:
     return (
         neighbour
@@ -152,11 +122,6 @@ def find_best_track(
     raise Exception("There is no path")
 
 
-def find_track_time(race_track: RaceTrack) -> int:
-    # FIXME still needed?
-    return race_track.width * race_track.height - len(race_track.tiles) - 1
-
-
 def get_pair_distance(start: Point, end: Point) -> int:
     return abs(start.x - end.x) + abs(start.y - end.y)
 
@@ -174,55 +139,33 @@ def get_tracks(race_track: RaceTrack) -> Generator[Point, None, None]:
 
 
 def find_time_cheated(
-    race_track: RaceTrack, best_time: int, trail: Trail
+    race_track: RaceTrack, trail: Trail
 ) -> Iterator[tuple[tuple[Point, Point], int]]:
     return filter(
-        None,
+        lambda item: item[-1] != 0,
         (
-            find_time_saved(track_pair, race_track=race_track, best_time=best_time)
-            for track_pair in (
-                (start, end, CHEAT_OLD_TIME)
-                for (start, end) in combinations(trail, 2)
-                if get_pair_distance(start, end) == CHEAT_OLD_TIME
-                and check_pair_is_separated_by_walls(race_track, start, end)
-            )
+            ((trail[start_idx], trail[end_idx]), (end_idx - start_idx) - CHEAT_OLD_TIME)
+            for (start_idx, end_idx) in combinations(range(len(trail)), 2)
+            if get_pair_distance(trail[start_idx], trail[end_idx]) == CHEAT_OLD_TIME
         ),
     )
 
 
-def find_time_saved(
-    track_pair: tuple[Point, Point, int], race_track: RaceTrack, best_time: int
-) -> tuple[tuple[Point, Point], int] | None:
-    start, end, distance = track_pair
-
-    time_save = find_best_track(race_track, start, end)[0] - distance
-
-    if time_save > 0:
-        return (start, end), time_save
-
-    return None
-
-
 def find_time_cheated_new_rule(
-    race_track: RaceTrack, best_time: int, trail: Trail
+    race_track: RaceTrack, trail: Trail
 ) -> Iterator[tuple[tuple[Point, Point], int]]:
-    with ProcessPoolExecutor() as executor:
-        return filter(
-            None,
-            executor.map(
-                partial(find_time_saved, race_track=race_track, best_time=best_time),
-                (
-                    (start, end, distance)
-                    for start, end, distance in (
-                        (start, end, get_pair_distance(start, end))
-                        for (start, end) in combinations(trail, 2)
-                    )
-                    if distance <= CHEAT_MAX_TIME
-                    and check_pair_is_separated_by_walls(race_track, start, end)
-                ),
-                chunksize=1000,
-            ),
-        )  # type: ignore
+    return filter(
+        lambda item: item[-1] != 0,
+        (
+            (
+                (trail[start_idx], trail[end_idx]),
+                (end_idx - start_idx)
+                - get_pair_distance(trail[start_idx], trail[end_idx]),
+            )
+            for (start_idx, end_idx) in combinations(range(len(trail)), 2)
+            if get_pair_distance(trail[start_idx], trail[end_idx]) <= CHEAT_MAX_TIME
+        ),
+    )  # type: ignore
 
 
 def part1(input: str) -> int:
@@ -232,7 +175,7 @@ def part1(input: str) -> int:
         tuple(
             time_saved
             for _, time_saved in find_time_cheated(
-                race_track, *find_best_track(race_track)
+                race_track, find_best_track(race_track)[-1]
             )
             if time_saved >= 100
         )
@@ -246,7 +189,7 @@ def part2(input: str) -> int:
         tuple(
             time_saved
             for _, time_saved in find_time_cheated_new_rule(
-                race_track, *find_best_track(race_track)
+                race_track, find_best_track(race_track)[-1]
             )
             if time_saved >= 100
         )
