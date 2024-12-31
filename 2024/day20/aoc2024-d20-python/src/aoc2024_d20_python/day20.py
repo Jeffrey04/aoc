@@ -1,8 +1,6 @@
 from collections.abc import Generator, Iterator
-from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field
 from enum import Enum
-from functools import partial
 from itertools import combinations
 from queue import PriorityQueue
 from sys import stdin
@@ -98,28 +96,23 @@ def find_neighbour(race_track: RaceTrack, point: Point) -> Generator[Point, None
     )
 
 
-def find_best_track(
-    race_track: RaceTrack, start: Point | None = None, end: Point | None = None
-) -> tuple[int, Trail]:
-    open = PriorityQueue()
-    open.put(Node(0, start or race_track.start, (start or race_track.start,)))
-    visited = set()
+def find_best_track(race_track: RaceTrack) -> Trail:
+    result = (race_track.start,)
 
-    while not open.empty():
-        current = open.get()
+    while True:
+        if result[-1] == race_track.end:
+            break
 
-        if current.point == (end or race_track.end):
-            return current.time, current.trail
-        elif current.point in visited:
-            continue
+        result += (
+            next(
+                neighbour
+                for neighbour in find_neighbour(race_track, result[-1])
+                if check_point_is_type(race_track, neighbour, Track)
+                and (neighbour != result[-2] if len(result) > 1 else True)
+            ),
+        )
 
-        visited.add(current.point)
-
-        if not check_point_is_type(race_track, current.point, Wall):
-            for point in find_neighbour(race_track, current.point):
-                open.put(Node(current.time + 1, point, current.trail + (point,)))
-
-    raise Exception("There is no path")
+    return result
 
 
 def get_pair_distance(start: Point, end: Point) -> int:
@@ -175,7 +168,7 @@ def part1(input: str) -> int:
         tuple(
             time_saved
             for _, time_saved in find_time_cheated(
-                race_track, find_best_track(race_track)[-1]
+                race_track, find_best_track(race_track)
             )
             if time_saved >= 100
         )
@@ -189,7 +182,7 @@ def part2(input: str) -> int:
         tuple(
             time_saved
             for _, time_saved in find_time_cheated_new_rule(
-                race_track, find_best_track(race_track)[-1]
+                race_track, find_best_track(race_track)
             )
             if time_saved >= 100
         )

@@ -25,11 +25,12 @@ input = """
 ###############
 """
 
+
 def test_find_time_shortest() -> None:
     race_track = parse(input)
     expected = 84
 
-    assert find_best_track(race_track)[0] == expected
+    assert len(find_best_track(race_track)) - 1 == expected
 
 
 def test_find_time_cheated() -> None:
@@ -55,7 +56,7 @@ def test_find_time_cheated() -> None:
             value
             for _, value in find_time_cheated(
                 race_track,
-                find_best_track(race_track, race_track.start, race_track.end)[-1],
+                find_best_track(race_track),
             )
         )
         == expected
@@ -88,7 +89,7 @@ def test_find_time_cheated_new() -> None:
             value
             for _, value in find_time_cheated_new_rule(
                 race_track,
-                find_best_track(race_track, race_track.start, race_track.end)[-1],
+                find_best_track(race_track),
             )
             # spacer
             if value >= 50
