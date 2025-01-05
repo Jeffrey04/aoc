@@ -164,22 +164,8 @@ def actions_list_filter_minimum(
     return tuple(actions for d, actions in delta if d == first(min(delta, key=first)))
 
 
-def action_to_string(action: Action) -> str:
-    match action:
-        case Action.Up:
-            return "^"
-        case Action.Down:
-            return "v"
-        case Action.Left:
-            return "<"
-        case Action.Right:
-            return ">"
-        case Action.Activate:
-            return "A"
-
-
 def actions_to_string(actions: Actions) -> str:
-    return "".join(action_to_string(action) for action in actions)
+    return "".join(action.value for action in actions)
 
 
 def code_to_actions[T](
