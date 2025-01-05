@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from functools import reduce
 from itertools import chain, pairwise
+from operator import add
 from queue import PriorityQueue
 from sys import stdin
 from typing import Literal
@@ -171,7 +172,6 @@ def actions_to_string(actions: Actions) -> str:
 def code_to_actions[T](
     code: Sequence[CodeKey],
     depth: int,
-    collector_code: Callable[[Iterator[T]], T] = compose(tuple, chain.from_iterable),
     default: T = (),
     collector_branch: Callable[[Iterator[T]], T] = compose(
         first, actions_list_filter_minimum
@@ -180,7 +180,8 @@ def code_to_actions[T](
         first, actions_list_filter_minimum
     ),
 ) -> T:
-    return collector_code(
+    return reduce(
+        add,
         code_expand(
             code,
             keypad_init_numeric(),
@@ -189,7 +190,8 @@ def code_to_actions[T](
             default,
             collector_branch,
             collector_leaf,
-        )
+        ),
+        default,
     )
 
 
@@ -305,7 +307,6 @@ def part2(input: str) -> int:
             code_to_actions(
                 code,  # type: ignore
                 25,
-                sum,
                 0,
                 min,
                 lambda actions_list: min(len(actions) for actions in actions_list),
