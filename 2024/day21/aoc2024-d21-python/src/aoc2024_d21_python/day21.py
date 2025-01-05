@@ -4,7 +4,7 @@ from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import reduce
-from itertools import chain, pairwise
+from itertools import pairwise
 from operator import add
 from queue import PriorityQueue
 from sys import stdin
@@ -173,23 +173,31 @@ def code_to_actions[T](
     code: Sequence[CodeKey],
     depth: int,
     default: T = (),
-    collector_branch: Callable[[Iterator[T]], T] = compose(
+    branch_picker: Callable[[Iterator[T]], T] = compose(
         first, actions_list_filter_minimum
     ),
-    collector_leaf: Callable[[Sequence[Actions]], T] = compose(
+    leaf_picker: Callable[[Sequence[Actions]], T] = compose(
         first, actions_list_filter_minimum
     ),
 ) -> T:
     return reduce(
         add,
-        code_expand(
-            code,
-            keypad_init_numeric(),
-            keypad_init_directional(),
-            depth,
-            default,
-            collector_branch,
-            collector_leaf,
+        (
+            branch_picker(
+                actions_expand(
+                    actions,
+                    depth - 1,
+                    keypad_init_directional(),
+                    default,
+                    branch_picker,
+                    leaf_picker,
+                )
+                for actions in actions_list
+            )
+            for actions_list in code_expand(
+                code,
+                keypad_init_numeric(),
+            )
         ),
         default,
     )
@@ -201,11 +209,9 @@ def actions_expand[T](
     depth: int,
     action_pad: Keypad[Action],
     default: T,
-    collector_branch: Callable[[Iterator[T]], T],
-    collector_leaf: Callable[[Sequence[Actions]], T],
+    branch_picker: Callable[[Iterator[T]], T],
+    leaf_picker: Callable[[Sequence[Actions]], T],
 ) -> T:
-    assert depth >= 1
-
     candidates = ((),)
     result = default
 
@@ -213,56 +219,35 @@ def actions_expand[T](
     for action in actions:
         position, actions_list = destination_get_actions(action_pad, action, position)
 
-        if depth == 1:
+        if depth == 0:
             candidates = tuple(
                 result + actions_incoming
                 for result in candidates
                 for actions_incoming in actions_list
             )
         else:
-            result += collector_branch(
+            result += branch_picker(
                 actions_expand(
                     actions_incoming,
                     depth - 1,
                     action_pad,
                     default,
-                    collector_branch,
-                    collector_leaf,
+                    branch_picker,
+                    leaf_picker,
                 )
                 for actions_incoming in actions_list
             )  # type: ignore
 
-    if depth == 1:
-        result = collector_leaf(candidates)
+    if depth == 0:
+        result = leaf_picker(candidates)
 
     return result
 
 
-def actions_expand_optimized[T](
-    actions_list: Sequence[Actions],
-    depth: int,
-    action_pad: Keypad[Action],
-    default: T,
-    collector_branch: Callable[[Iterator[T]], T],
-    collector_leaf: Callable[[Sequence[Actions]], T],
-) -> T:
-    return collector_branch(
-        actions_expand(
-            actions, depth, action_pad, default, collector_branch, collector_leaf
-        )
-        for actions in actions_list
-    )
-
-
-def code_expand[T](
+def code_expand(
     code: Sequence[CodeKey],
     num_pad: Keypad[CodeKey],
-    action_pad: Keypad[Action],
-    depth: int,
-    default: T,
-    collector_branch: Callable[[Iterator[T]], T],
-    collector_leaf: Callable[[Sequence[Actions]], T],
-) -> Iterator[T]:
+) -> Iterator[Sequence[Actions]]:
     robot_position = num_pad.initial
 
     for code_key in code:
@@ -272,14 +257,7 @@ def code_expand[T](
             robot_position,
         )
 
-        yield actions_expand_optimized(
-            actions_list,
-            depth,
-            action_pad,
-            default,
-            collector_branch,
-            collector_leaf,
-        )
+        yield actions_list
 
 
 def actions_to_complexity(actions: int | Actions, code: str) -> int:
