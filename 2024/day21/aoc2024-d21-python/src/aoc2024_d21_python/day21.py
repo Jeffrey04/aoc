@@ -1,19 +1,19 @@
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import reduce
-from itertools import count, pairwise
-from math import inf
+from itertools import chain, pairwise
 from queue import PriorityQueue
 from sys import stdin
 from typing import Literal
 
-from cytoolz.functoolz import memoize
-from cytoolz.itertoolz import first
+from cytoolz.functoolz import compose, memoize
+from cytoolz.itertoolz import first, last
 from pyrsistent import PMap, pmap
 
+# FIXME alternatively I should do this as Enum to fix all the type error
 type CodeKey = Literal["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "A"]
 type Actions = tuple[Action, ...]
 
@@ -149,7 +149,8 @@ def destination_get_actions[T](
 
 def actions_get_delta(actions: Actions) -> int:
     return reduce(
-        lambda current, incoming: current + (0 if incoming[0] == incoming[1] else 1),
+        lambda current, incoming: current
+        + (0 if first(incoming) == last(incoming) else 1),
         pairwise(actions),
         0,
     )
@@ -160,11 +161,7 @@ def actions_list_filter_minimum(
 ) -> Sequence[Actions]:
     delta = tuple((actions_get_delta(actions), actions) for actions in actions_list)
 
-    return tuple(
-        actions
-        for d, actions in delta
-        if d == (min(delta, key=lambda item: item[0])[0])
-    )
+    return tuple(actions for d, actions in delta if d == first(min(delta, key=first)))
 
 
 def action_to_string(action: Action) -> str:
@@ -185,122 +182,157 @@ def actions_to_string(actions: Actions) -> str:
     return "".join(action_to_string(action) for action in actions)
 
 
-def get_user_actions(remote_actions: Actions, user_pad: Keypad[Action]) -> Actions:
-    results = ((),)
-    user_position = user_pad.initial
-
-    for action in remote_actions:
-        user_position, actions_list = destination_get_actions(
-            user_pad,
-            action,
-            user_position,
-        )
-
-        results = tuple(
-            result + actions for result in results for actions in actions_list
-        )
-
-    return first(actions_list_filter_minimum(results))  # type: ignore
-
-
-@memoize
-def get_remote_actions(
-    door_actions: Actions, remote_pad: Keypad[Action]
-) -> Sequence[Actions]:
-    remote_position = remote_pad.initial
-    results = ((),)
-
-    for door_action in door_actions:
-        remote_position, remote_actions_list = destination_get_actions(
-            remote_pad, door_action, remote_position
-        )
-
-        results = tuple(
-            result + remote_actions
-            for result in results
-            for remote_actions in remote_actions_list
-        )
-
-    return results
-
-
-def get_robot_actions(code: str, door_pad: Keypad[CodeKey]) -> Sequence[Actions]:
-    robot_position = door_pad.initial
-    results = ((),)
-
-    for code_key in tuple(code):
-        robot_position, robot_actions_list = destination_get_actions(
-            door_pad,
-            code_key,  # type: ignore
-            robot_position,
-        )
-
-        results = tuple(
-            result + robot_actions
-            for result in results
-            for robot_actions in robot_actions_list
-        )
-
-    return results
-
-
-def code_to_actions(code: str) -> Actions:
-    return first(
-        actions_list_filter_minimum(
-            get_user_actions(remote_actions, keypad_init_directional())
-            for robot_actions in get_robot_actions(code, keypad_init_numeric())
-            for remote_actions in get_remote_actions(
-                robot_actions, keypad_init_directional()
-            )
+def code_to_actions[T](
+    code: Sequence[CodeKey],
+    depth: int,
+    collector_code: Callable[[Iterator[T]], T] = compose(tuple, chain.from_iterable),
+    default: T = (),
+    collector_branch: Callable[[Iterator[T]], T] = compose(
+        first, actions_list_filter_minimum
+    ),
+    collector_leaf: Callable[[Sequence[Actions]], T] = compose(
+        first, actions_list_filter_minimum
+    ),
+) -> T:
+    return collector_code(
+        code_expand(
+            code,
+            keypad_init_numeric(),
+            keypad_init_directional(),
+            depth,
+            default,
+            collector_branch,
+            collector_leaf,
         )
     )
 
 
-def code_to_actions2(code: str) -> Actions:
-    results = get_robot_actions(code, keypad_init_numeric())
-    min_delta, to_return = inf, None
+@memoize
+def actions_expand[T](
+    actions: Actions,
+    depth: int,
+    action_pad: Keypad[Action],
+    default: T,
+    collector_branch: Callable[[Iterator[T]], T],
+    collector_leaf: Callable[[Sequence[Actions]], T],
+) -> T:
+    assert depth >= 1
 
-    for _ in range(25):
-        results = (
-            actions
-            for result in results
-            for actions in get_remote_actions(result, keypad_init_directional())
+    candidates = ((),)
+    result = default
+
+    position = action_pad.initial
+    for action in actions:
+        position, actions_list = destination_get_actions(action_pad, action, position)
+
+        if depth == 1:
+            candidates = tuple(
+                result + actions_incoming
+                for result in candidates
+                for actions_incoming in actions_list
+            )
+        else:
+            result += collector_branch(
+                actions_expand(
+                    actions_incoming,
+                    depth - 1,
+                    action_pad,
+                    default,
+                    collector_branch,
+                    collector_leaf,
+                )
+                for actions_incoming in actions_list
+            )  # type: ignore
+
+    if depth == 1:
+        result = collector_leaf(candidates)
+
+    return result
+
+
+def actions_expand_optimized[T](
+    actions_list: Sequence[Actions],
+    depth: int,
+    action_pad: Keypad[Action],
+    default: T,
+    collector_branch: Callable[[Iterator[T]], T],
+    collector_leaf: Callable[[Sequence[Actions]], T],
+) -> T:
+    return collector_branch(
+        actions_expand(
+            actions, depth, action_pad, default, collector_branch, collector_leaf
+        )
+        for actions in actions_list
+    )
+
+
+def code_expand[T](
+    code: Sequence[CodeKey],
+    num_pad: Keypad[CodeKey],
+    action_pad: Keypad[Action],
+    depth: int,
+    default: T,
+    collector_branch: Callable[[Iterator[T]], T],
+    collector_leaf: Callable[[Sequence[Actions]], T],
+) -> Iterator[T]:
+    robot_position = num_pad.initial
+
+    for code_key in code:
+        robot_position, actions_list = destination_get_actions(
+            num_pad,
+            code_key,
+            robot_position,
         )
 
-    for result in results:
-        actions = get_user_actions(result, keypad_init_directional())
-        delta = actions_get_delta(actions)
-
-        if delta < min_delta:
-            min_delta = delta
-            to_return = actions
-
-    assert to_return is not None
-
-    return to_return
+        yield actions_expand_optimized(
+            actions_list,
+            depth,
+            action_pad,
+            default,
+            collector_branch,
+            collector_leaf,
+        )
 
 
-def actions_to_complexity(actions: Actions, code: str) -> int:
-    return len(actions) * int(code.rstrip("A").lstrip("0"))
+def actions_to_complexity(actions: int | Actions, code: str) -> int:
+    return (actions if isinstance(actions, int) else len(actions)) * int(
+        code.rstrip("A").lstrip("0")
+    )
 
 
 def part1(input: str) -> int:
     return sum(
-        actions_to_complexity(code_to_actions(code), code)
+        actions_to_complexity(
+            code_to_actions(
+                code,  # type: ignore
+                2,
+            ),
+            code,
+        )
         for code in input.strip().splitlines()
     )
 
 
 def part2(input: str) -> int:
     return sum(
-        actions_to_complexity(code_to_actions2(code), code)
+        actions_to_complexity(
+            code_to_actions(
+                code,  # type: ignore
+                25,
+                sum,
+                0,
+                min,
+                lambda actions_list: min(len(actions) for actions in actions_list),
+            ),
+            code,
+        )
         for code in input.strip().splitlines()
     )
 
 
 def main() -> None:
     input = stdin.read()
-    # print("PYTHON:", part1(input))
+
     print("PYTHON:", part1(input), part2(input))
 
 

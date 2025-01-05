@@ -98,7 +98,7 @@ def test_code_to_actions() -> None:
     input = "029A"
     expected = 68
 
-    assert len(code_to_actions(input)) == expected
+    assert len(code_to_actions(input, 2)) == expected  # type: ignore
 
 
 def test_part1() -> None:
