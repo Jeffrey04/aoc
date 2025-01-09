@@ -77,11 +77,7 @@ def tokenize(input: str) -> tuple[Token, ...]:
 def parse(tokens: tuple[Token, ...]) -> tuple[Expr, ...]:
     number = tok_(Spec.NUMBER) >> int
     everything = (
-        tok_(Spec.NUMBER)
-        | tok_(Spec.LPAREN)
-        | tok_(Spec.RPAREN)
-        | tok_(Spec.COMMA)
-        | tok_(Spec.GIBBERISH)
+        tok_(Spec.NUMBER) | tok_(Spec.LPAREN) | tok_(Spec.RPAREN) | tok_(Spec.COMMA)
     )
 
     mul = (
