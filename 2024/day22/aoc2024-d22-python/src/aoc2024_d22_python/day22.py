@@ -1,10 +1,9 @@
-from collections.abc import Callable, Iterator, Sequence
-from functools import reduce
+from collections.abc import Callable, Iterator
 from itertools import pairwise
 from sys import stdin
 
 from cytoolz.functoolz import compose, memoize
-from cytoolz.itertoolz import last, sliding_window
+from cytoolz.itertoolz import sliding_window
 
 
 def repeat(func: Callable[[int], int], iterations: int) -> Callable[[int], int]:
