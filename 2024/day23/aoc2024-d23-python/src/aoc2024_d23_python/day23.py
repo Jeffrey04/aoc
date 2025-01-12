@@ -15,9 +15,6 @@ CHIEF_STARTCHAR = "t"
 class Computer:
     name: str
 
-    def __repr__(self) -> str:
-        return self.name
-
 
 @dataclass(frozen=True)
 class Edge:

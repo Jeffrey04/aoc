@@ -66,7 +66,8 @@ ub,vc,wq
 
     for nodes in result:
         assert any(
-            ",".join(map(str, combo)) in expected for combo in permutations(nodes, 3)
+            ",".join(map(lambda x: x.name, combo)) in expected
+            for combo in permutations(nodes, 3)
         )
 
 
@@ -87,7 +88,8 @@ td,wh,yn
 
     for nodes in result:
         assert any(
-            ",".join(map(str, combo)) in expected for combo in permutations(nodes, 3)
+            ",".join(map(lambda x: x.name, combo)) in expected
+            for combo in permutations(nodes, 3)
         )
 
 
